@@ -5,7 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-
+#define CBL_ADDR_USERAPP 0x08002000U // TODO check address
 
 typedef struct CBL_Handle_s
 {
