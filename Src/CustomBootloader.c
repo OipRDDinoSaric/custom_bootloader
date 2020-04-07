@@ -72,39 +72,36 @@ CBL_Err_Code_t cbl_runShellSystem(void)
 {
 	CBL_Err_Code_t eCode = CBL_ERR_NO;
 	bool exit = false;
+	CBL_sysStates_t state = CBL_STAT_ERR, nextState;
 
 	INFO("Starting bootloader\r\n");
+
+	nextState = state;
 	cbl_shellInit();
 
 	while (exit == false)
 	{
-		CBL_sysStates_t state = CBL_STAT_ERR, nextState;
-
 		switch (state)
 		{
 			case CBL_STAT_OPER:
 			{
-				cbl_stateOperation( &nextState);
+				eCode = cbl_stateOperation( &nextState);
 				break;
 			}
 			case CBL_STAT_ERR:
 			{
 				eCode = cbl_stateError( &nextState, eCode);
-				if (eCode != CBL_ERR_NO)
-				{
-					nextState = CBL_STAT_EXIT;
-				}
 				break;
 			}
 			case CBL_STAT_EXIT:
 			{
-				/* deconstruct needed */
+				/* deconstruct if needed */
 				exit = true;
 				break;
 			}
 			default:
 			{
-				eCode = CBL_ERR_NO;
+				eCode = CBL_ERR_STATE;
 				break;
 			}
 		}
@@ -116,11 +113,35 @@ CBL_Err_Code_t cbl_runShellSystem(void)
 static CBL_sysStates_t cbl_stateOperation(CBL_sysStates_t *nextState)
 {
 	CBL_Err_Code_t eCode = CBL_ERR_NO;
+	bool reqExit = false;
+	HAL_UART_Transmit(pUARTCmd, (uint8_t *)"Waiting for new command:\r\n>",
+			sizeof ("Waiting for new command:\r\n>"), 100);
+//	cbl_waitForNewCmd();
+//	cbl_enumNewCmd();
+//	cbl_handleNewCmd();
+
+	if (eCode != CBL_ERR_NO)
+	{
+		*nextState = CBL_STAT_ERR;
+	}
+	else if (reqExit == true)
+	{
+		*nextState = CBL_STAT_EXIT;
+	}
 	return eCode;
 }
 
 static CBL_sysStates_t cbl_stateError(CBL_sysStates_t *nextState, CBL_Err_Code_t eCode)
 {
+
+	if (eCode != CBL_ERR_NO)
+	{
+		*nextState = CBL_STAT_EXIT;
+	}
+	else
+	{
+		*nextState = CBL_STAT_OPER;
+	}
 	return eCode;
 }
 

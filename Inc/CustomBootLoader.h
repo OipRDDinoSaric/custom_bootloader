@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include "usart.h"
 
 #define CBL_ADDR_USERAPP 0x08008000U /* address of MSP of user application */
 
