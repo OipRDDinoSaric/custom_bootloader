@@ -1,32 +1,58 @@
 #include "CustomBootLoader.h"
 
-static void cbl_shellInit(void);
-static void cbl_runUserApp(void);
-static CBL_Err_Code_t cbl_runShellSystem(void);
-static CBL_sysStates_t cbl_stateOperation(CBL_sysStates_t *nextState);
-static CBL_sysStates_t cbl_stateError(CBL_sysStates_t *nextState, CBL_Err_Code_t eCode);
+static void cbl_ShellInit(void);
+static void cbl_RunUserApp(void);
+static CBL_Err_Code_t cbl_RunShellSystem(void);
+static CBL_Err_Code_t cbl_StateOperation(void);
+static CBL_Err_Code_t cbl_WaitForCmd(out char* buf, size_t len);
+static CBL_Err_Code_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
+static CBL_Err_Code_t cbl_SendToHost(out char *buf, size_t len);
+static CBL_Err_Code_t cbl_RecvFromHost(out char *buf, size_t len);
+//static CBL_Err_Code_t cbl_StopRecvFromHost();
+static CBL_Err_Code_t cbl_StateError(CBL_Err_Code_t eCode);
 
-void CBL_init()
+static uint32_t cntrRecvChar = 0;
+
+void CBL_Start()
 {
-	CBL_Err_Code_t eCode = CBL_ERR_NO;
+	CBL_Err_Code_t eCode = CBL_ERR_OK;
 	INFO("Custom bootloader started\r\n");
 	if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
 	{
 		INFO("Blue button pressed...\r\n");
-		eCode = cbl_runShellSystem();
+//		eCode = cbl_runShellSystem(); TODO UNCOMMENT
 	}
 	else
 	{
 		INFO("Blue button not pressed...\r\n");
+		eCode = cbl_RunShellSystem(); // TODO REMOVE
 	}
-	ASSERT(eCode == CBL_ERR_NO, "ErrCode:%d:Restart the application.\r\n", eCode);
-	cbl_runUserApp();
+	ASSERT(eCode == CBL_ERR_OK, "ErrCode=%d:Restart the application.\r\n", eCode);
+	cbl_RunUserApp();
 	ERROR("Switching to user application failed\r\n");
 }
 
-static void cbl_shellInit(void)
+static void cbl_ShellInit(void)
 {
-/// TODO move init UART here
+	char bufWelcome[] = ""
+			"\r\n*********************************************\r\n"
+			"Custom bootloader for STM32F4 Discovery board\r\n"
+			"*********************************************\r\n"
+			"*********************************************\r\n"
+			"                     "
+	CBL_VERSION
+	"                     \r\n"
+	"*********************************************\r\n"
+	"               Master's thesis               \r\n"
+	"                  Dino Saric                 \r\n"
+	"            University of Zagreb             \r\n"
+	"                     2020                    \r\n"
+	"*********************************************\r\n"
+	"      User manual is present under /docs     \r\n"
+	"*********************************************\r\n";
+	MX_DMA_Init();
+	MX_USART2_UART_Init();
+	cbl_SendToHost(bufWelcome, strlen(bufWelcome));
 }
 
 /**
@@ -47,7 +73,7 @@ static void cbl_shellInit(void)
  *
  * @return	Procesor never returns from this application
  */
-static void cbl_runUserApp(void)
+static void cbl_RunUserApp(void)
 {
 	void (*userAppResetHandler)(void);
 	uint32_t addressRstHndl;
@@ -68,35 +94,55 @@ static void cbl_runUserApp(void)
  * @brief	Runs the shell for the bootloader.
  * @return	CBL_ERR_NO when no error, else returns an error code.
  */
-CBL_Err_Code_t cbl_runShellSystem(void)
+static CBL_Err_Code_t cbl_RunShellSystem(void)
 {
-	CBL_Err_Code_t eCode = CBL_ERR_NO;
-	bool exit = false;
+	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	bool isExitReq = false;
 	CBL_sysStates_t state = CBL_STAT_ERR, nextState;
 
 	INFO("Starting bootloader\r\n");
 
 	nextState = state;
-	cbl_shellInit();
+	cbl_ShellInit();
 
-	while (exit == false)
+	while (isExitReq == false)
 	{
 		switch (state)
 		{
 			case CBL_STAT_OPER:
 			{
-				eCode = cbl_stateOperation( &nextState);
+				eCode = cbl_StateOperation();
+
+				/* Switch state if needed */
+				if (eCode != CBL_ERR_OK)
+				{
+					nextState = CBL_STAT_ERR;
+				}
+				else if (isExitReq == true)
+				{
+					nextState = CBL_STAT_EXIT;
+				}
 				break;
 			}
 			case CBL_STAT_ERR:
 			{
-				eCode = cbl_stateError( &nextState, eCode);
+				eCode = cbl_StateError(eCode);
+
+				/* Switch state if needed */
+				if (eCode != CBL_ERR_OK)
+				{
+					nextState = CBL_STAT_EXIT;
+				}
+				else
+				{
+					nextState = CBL_STAT_OPER;
+				}
 				break;
 			}
 			case CBL_STAT_EXIT:
 			{
-				/* deconstruct if needed */
-				exit = true;
+				/* Deconstructor */
+				isExitReq = true;
 				break;
 			}
 			default:
@@ -110,38 +156,244 @@ CBL_Err_Code_t cbl_runShellSystem(void)
 	return eCode;
 }
 
-static CBL_sysStates_t cbl_stateOperation(CBL_sysStates_t *nextState)
+static CBL_Err_Code_t cbl_StateOperation(void)
 {
-	CBL_Err_Code_t eCode = CBL_ERR_NO;
-	bool reqExit = false;
-	HAL_UART_Transmit(pUARTCmd, (uint8_t *)"Waiting for new command:\r\n>",
-			sizeof ("Waiting for new command:\r\n>"), 100);
-//	cbl_waitForNewCmd();
-//	cbl_enumNewCmd();
-//	cbl_handleNewCmd();
+	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	CBL_CMD_t cmdCode = CBL_CMD_UNDEF;
+	char cmd[BUF_CMD_SZ] = { 0 };
 
-	if (eCode != CBL_ERR_NO)
+	eCode = cbl_WaitForCmd(cmd, BUF_CMD_SZ);
+	ERR_CHECK(eCode);
+
+	eCode = cbl_EnumCmd(cmd, strlen(cmd), &cmdCode);
+	ERR_CHECK(eCode);
+
+//	cbl_HandleCmd();
+	return eCode;
+}
+
+static CBL_Err_Code_t cbl_WaitForCmd(out char* buf, size_t len)
+{
+	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	bool isLastCharCR = false, isOverflow = true;
+	uint32_t i = 0;
+	cntrRecvChar = 0;
+
+	eCode = cbl_SendToHost("\r\n>", 3);
+	ERR_CHECK(eCode);
+
+	/* Read until CRLF or until full DMA*/
+	while (cntrRecvChar < len)
 	{
-		*nextState = CBL_STAT_ERR;
+		/* Receive one char from host */
+		eCode = cbl_RecvFromHost(buf + i, 1);
+		ERR_CHECK(eCode);
+
+		/* Wait for a new char */
+		while (i != (cntrRecvChar - 1))
+		{
+		}
+
+		/* If last char was \r  */
+		if (isLastCharCR == true)
+		{
+			/* Check if \n was received */
+			if (buf[i] == '\n')
+			{
+				/* CRLF was received, command done */
+				/*!< Replace '\r' with '\0' to make sure every char array ends with '\0' */
+				buf[i - 1] = '\0';
+				isOverflow = false;
+				break;
+			}
+		}
+
+		/* update isLastCharCR */
+		isLastCharCR = buf[i] == '\r' ? true: false;
+
+		/* prepare for next char */
+		i++;
 	}
-	else if (reqExit == true)
+	/* If DMA fills the buffer and no command is received throw an error */
+	if (isOverflow == true)
 	{
-		*nextState = CBL_STAT_EXIT;
+		eCode = CBL_ERR_READ_OF;
+	}
+	/* If no error buf has a new command to process */
+	return eCode;
+}
+
+static CBL_Err_Code_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode)
+{
+	CBL_Err_Code_t eCode = CBL_CMD_UNDEF;
+	if (len == 0)
+	{
+		eCode = CBL_ERR_CMD_SHORT;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_VERSION, strlen(CBL_TXTCMD_VERSION)) == 0)
+	{
+		*cmdCode = CBL_CMD_VERSION;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_HELP, strlen(CBL_TXTCMD_HELP)) == 0)
+	{
+		*cmdCode = CBL_CMD_HELP;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_CID, strlen(CBL_TXTCMD_CID)) == 0)
+	{
+		*cmdCode = CBL_CMD_CID;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_RDP_STATUS, strlen(CBL_TXTCMD_RDP_STATUS)) == 0)
+	{
+		*cmdCode = CBL_CMD_RDP_STATUS;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_JUMP_TO, strlen(CBL_TXTCMD_JUMP_TO)) == 0)
+	{
+		*cmdCode = CBL_CMD_JUMP_TO;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_FLASH_ERASE, strlen(CBL_TXTCMD_FLASH_ERASE)) == 0)
+	{
+		*cmdCode = CBL_CMD_FLASH_ERASE;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_EN_RW_PR, strlen(CBL_TXTCMD_EN_RW_PR)) == 0)
+	{
+		*cmdCode = CBL_CMD_EN_RW_PR;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_DIS_RW_PR, strlen(CBL_TXTCMD_DIS_RW_PR)) == 0)
+	{
+		*cmdCode = CBL_CMD_DIS_RW_PR;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_MEM_READ, strlen(CBL_TXTCMD_MEM_READ)) == 0)
+	{
+		*cmdCode = CBL_CMD_MEM_READ;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_GET_SECT_STAT, strlen(CBL_TXTCMD_GET_SECT_STAT)) == 0)
+	{
+		*cmdCode = CBL_CMD_GET_SECT_STAT;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_OTP_READ, strlen(CBL_TXTCMD_OTP_READ)) == 0)
+	{
+		*cmdCode = CBL_CMD_OTP_READ;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_MEM_WRITE, strlen(CBL_TXTCMD_MEM_WRITE)) == 0)
+	{
+		*cmdCode = CBL_CMD_MEM_WRITE;
+	}
+	else if (strncmp(buf, CBL_TXTCMD_EXIT, strlen(CBL_TXTCMD_EXIT)) == 0)
+	{
+		*cmdCode = CBL_CMD_EXIT;
+	}
+
+	if (eCode == CBL_ERR_OK && *cmdCode == CBL_CMD_UNDEF)
+		eCode = CBL_ERR_CMD_UNDEF;
+	return eCode;
+}
+
+static CBL_Err_Code_t cbl_SendToHost(out char *buf, size_t len)
+{
+	if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY) == HAL_OK)
+	{
+		return CBL_ERR_OK;
+	}
+	else
+	{
+		return CBL_ERR_HAL_TX;
+	}
+}
+
+static CBL_Err_Code_t cbl_RecvFromHost(out char *buf, size_t len)
+{
+	if (HAL_UART_Receive_DMA(pUARTCmd, (uint8_t *)buf, len) == HAL_OK)
+	{
+		return CBL_ERR_OK;
+	}
+	else
+	{
+		return CBL_ERR_HAL_RX;
+	}
+}
+
+//static CBL_Err_Code_t cbl_StopRecvFromHost()
+//{
+//	if (HAL_UART_AbortReceive(pUARTCmd) == HAL_OK)
+//	{
+//		return CBL_ERR_OK;
+//	}
+//	else
+//	{
+//		return CBL_ERR_RX_ABORT;
+//	}
+//}
+
+static CBL_Err_Code_t cbl_StateError(CBL_Err_Code_t eCode)
+{
+
+	switch (eCode)
+	{
+		case CBL_ERR_OK:
+		{
+			break;
+		}
+		case CBL_ERR_READ_OF:
+		{
+			char msg[] = "\r\nERROR: Command too long\r\n";
+			WARNING("Overflow while reading happened\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_WRITE:
+		{
+
+			break;
+		}
+		case CBL_ERR_STATE:
+		{
+
+			break;
+		}
+		case CBL_ERR_HAL_TX:
+		{
+			WARNING("HAL transmit error happened\r\n");
+			break;
+		}
+		case CBL_ERR_HAL_RX:
+		{
+			WARNING("HAL receive error happened\r\n");
+			break;
+		}
+		case CBL_ERR_RX_ABORT:
+		{
+			WARNING("Error happened while aborting receive\r\n");
+			break;
+		}
+		case CBL_ERR_CMD_SHORT:
+		{
+			INFO("Client sent an empty command\r\n");
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_CMD_UNDEF:
+		{
+			char msg[] = "\r\nERROR: Invalid command\r\n";
+			INFO("Client sent an invalid command\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		default:
+		{
+			WARNING("Unhandled error happened\r\n");
+			break;
+		}
 	}
 	return eCode;
 }
 
-static CBL_sysStates_t cbl_stateError(CBL_sysStates_t *nextState, CBL_Err_Code_t eCode)
+void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
-
-	if (eCode != CBL_ERR_NO)
+	if (huart == pUARTCmd)
 	{
-		*nextState = CBL_STAT_EXIT;
+		cntrRecvChar++;
 	}
-	else
-	{
-		*nextState = CBL_STAT_OPER;
-	}
-	return eCode;
 }
 

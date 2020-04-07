@@ -24,8 +24,7 @@
 #define __MAIN_H
 
 #ifdef __cplusplus
-extern "C"
-{
+extern "C" {
 #endif
 
 /* Includes ------------------------------------------------------------------*/
@@ -76,7 +75,8 @@ extern "C"
 #define ASSERT(expr, f_, ...);
 #endif /* LOG_EN == true */
 
-#define CRLF \r\n
+/* Used when the variable is a output of a function */
+#define out
 
 /* USER CODE END Includes */
 
