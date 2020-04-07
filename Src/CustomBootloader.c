@@ -1,28 +1,32 @@
 #include "CustomBootLoader.h"
 
-static void cbl_initShell(void);
+static void cbl_shellInit(void);
 static void cbl_runUserApp(void);
+static CBL_Err_Code_t cbl_runShellSystem(void);
+static CBL_sysStates_t cbl_stateOperation(CBL_sysStates_t *nextState);
+static CBL_sysStates_t cbl_stateError(CBL_sysStates_t *nextState, CBL_Err_Code_t eCode);
 
 void CBL_init()
 {
+	CBL_Err_Code_t eCode = CBL_ERR_NO;
 	INFO("Custom bootloader started\r\n");
-	INFO("v0.1\r\n");
 	if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
 	{
 		INFO("Blue button pressed...\r\n");
-		cbl_initShell();
+		eCode = cbl_runShellSystem();
 	}
 	else
 	{
 		INFO("Blue button not pressed...\r\n");
-		cbl_runUserApp();
-		ERROR("Switching to user application failed\r\n");
 	}
+	ASSERT(eCode == CBL_ERR_NO, "ErrCode:%d:Restart the application.\r\n", eCode);
+	cbl_runUserApp();
+	ERROR("Switching to user application failed\r\n");
 }
 
-static void cbl_initShell(void)
+static void cbl_shellInit(void)
 {
-
+/// TODO move init UART here
 }
 
 /**
@@ -36,7 +40,8 @@ static void cbl_initShell(void)
  *
  * 			3)	Jump to the user application reset handler. Giving control to the user application.
  *
- * @note	In user application VECT_TAB_OFFSET set to the offset of user application from the start of the flash.
+ * @note	DO NOT FORGET: In user application VECT_TAB_OFFSET set to the offset of user application
+ * 			from the start of the flash.
  * 			e.g. If our application starts in the 2nd sector we would write #define VECT_TAB_OFFSET 0x8000.
  * 			VECT_TAB_OFFSET is located in system_Stm32f4xx.c
  *
@@ -59,3 +64,63 @@ static void cbl_runUserApp(void)
 	INFO("Jumping to user application\r\n");
 	userAppResetHandler();
 }
+/**
+ * @brief	Runs the shell for the bootloader.
+ * @return	CBL_ERR_NO when no error, else returns an error code.
+ */
+CBL_Err_Code_t cbl_runShellSystem(void)
+{
+	CBL_Err_Code_t eCode = CBL_ERR_NO;
+	bool exit = false;
+
+	INFO("Starting bootloader\r\n");
+	cbl_shellInit();
+
+	while (exit == false)
+	{
+		CBL_sysStates_t state = CBL_STAT_ERR, nextState;
+
+		switch (state)
+		{
+			case CBL_STAT_OPER:
+			{
+				cbl_stateOperation( &nextState);
+				break;
+			}
+			case CBL_STAT_ERR:
+			{
+				eCode = cbl_stateError( &nextState, eCode);
+				if (eCode != CBL_ERR_NO)
+				{
+					nextState = CBL_STAT_EXIT;
+				}
+				break;
+			}
+			case CBL_STAT_EXIT:
+			{
+				/* deconstruct needed */
+				exit = true;
+				break;
+			}
+			default:
+			{
+				eCode = CBL_ERR_NO;
+				break;
+			}
+		}
+		state = nextState;
+	}
+	return eCode;
+}
+
+static CBL_sysStates_t cbl_stateOperation(CBL_sysStates_t *nextState)
+{
+	CBL_Err_Code_t eCode = CBL_ERR_NO;
+	return eCode;
+}
+
+static CBL_sysStates_t cbl_stateError(CBL_sysStates_t *nextState, CBL_Err_Code_t eCode)
+{
+	return eCode;
+}
+

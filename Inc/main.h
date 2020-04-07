@@ -24,7 +24,8 @@
 #define __MAIN_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /* Includes ------------------------------------------------------------------*/
@@ -38,6 +39,7 @@ extern "C" {
 
 #ifdef _DEBUG
 #define LOG_EN true /*!< if build is running as Debug enable logging */
+#define ASSERT_EN true /* if user wants application to enable assertion */
 #else
 #define LOG_EN false /*!< if build is running as Release disable logging */
 #endif
@@ -57,13 +59,22 @@ extern "C" {
 
 #define ERROR(f_, ...) printf("ERRO:%s:%d:%s:", __FILE__, __LINE__, __func__); \
 						  printf((f_), ##__VA_ARGS__)
-
+#if ASSERT_EN == true
+#define ASSERT(expr, f_, ...)		\
+  do {								\
+    if (!(expr)) {					\
+      ERROR((f_), ##__VA_ARGS__);	\
+      while(1);						\
+    }								\
+  } while (0)
+#endif /* ASSERT_EN == true */
 #else
 #define INFO(f_, ...);
 #define DEBUG(f_, ...);
 #define WARNING(f_, ...);
 #define ERROR(f_, ...);
-#endif
+#define ASSERT(expr, f_, ...);
+#endif /* LOG_EN == true */
 
 #define CRLF \r\n
 
