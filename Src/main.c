@@ -20,13 +20,14 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "dma.h"
 #include "usart.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #if LOG_EN == true
-extern void initialise_monitor_handles (void);
+extern void initialise_monitor_handles(void);
 #endif
 /* USER CODE END Includes */
 
@@ -82,7 +83,7 @@ int main(void)
 	/* Used for semihosting (printf) to console */
 #if LOG_EN == true
 	/* if there is a error of multiple definitions exclude ../Src/syscalls.c */
-	initialise_monitor_handles ();
+	initialise_monitor_handles();
 #endif
 	/* USER CODE END Init */
 
@@ -94,6 +95,7 @@ int main(void)
 
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
+	MX_DMA_Init();
 	MX_USART2_UART_Init();
 	/* USER CODE BEGIN 2 */
 	CBL_init();

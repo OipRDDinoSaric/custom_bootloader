@@ -239,7 +239,7 @@
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
 		<configuration configurationName="Debug">
-			<resource resourceType="PROJECT" workspacePath="/F4Disc1_CustomBootloader"/>
+			<resource resourceType="PROJECT" workspacePath="F4Disc1_CustomBootloader"/>
 		</configuration>
 		<configuration configurationName="Release"/>
 	</storageModule>
