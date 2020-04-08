@@ -170,7 +170,7 @@ static CBL_ErrCode_t cbl_StateOperation(void)
 	eCode = cbl_ParseCmd(cmd, strlen(cmd), &parser);
 	ERR_CHECK(eCode);
 
-	eCode = cbl_EnumCmd(cmd, strlen(cmd), &cmdCode);
+	eCode = cbl_EnumCmd(parser.cmd, strlen(cmd), &cmdCode);
 	ERR_CHECK(eCode);
 
 //	eCode = cbl_HandleCmd();
@@ -298,55 +298,68 @@ static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 	{
 		eCode = CBL_ERR_CMD_SHORT;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_VERSION, strlen(CBL_TXTCMD_VERSION)) == 0)
+	else if (len == strlen(CBL_TXTCMD_VERSION)
+			&& strncmp(buf, CBL_TXTCMD_VERSION, strlen(CBL_TXTCMD_VERSION)) == 0)
 	{
 		*cmdCode = CBL_CMD_VERSION;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_HELP, strlen(CBL_TXTCMD_HELP)) == 0)
+	else if (len == strlen(CBL_TXTCMD_HELP)
+			&& strncmp(buf, CBL_TXTCMD_HELP, strlen(CBL_TXTCMD_HELP)) == 0)
 	{
 		*cmdCode = CBL_CMD_HELP;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_CID, strlen(CBL_TXTCMD_CID)) == 0)
+	else if (len == strlen(CBL_TXTCMD_CID)
+			&& strncmp(buf, CBL_TXTCMD_CID, strlen(CBL_TXTCMD_CID)) == 0)
 	{
 		*cmdCode = CBL_CMD_CID;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_RDP_STATUS, strlen(CBL_TXTCMD_RDP_STATUS)) == 0)
+	else if (len == strlen(CBL_TXTCMD_RDP_STATUS)
+			&& strncmp(buf, CBL_TXTCMD_RDP_STATUS, strlen(CBL_TXTCMD_RDP_STATUS)) == 0)
 	{
 		*cmdCode = CBL_CMD_RDP_STATUS;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_JUMP_TO, strlen(CBL_TXTCMD_JUMP_TO)) == 0)
+	else if (len == strlen(CBL_TXTCMD_JUMP_TO)
+			&& strncmp(buf, CBL_TXTCMD_JUMP_TO, strlen(CBL_TXTCMD_JUMP_TO)) == 0)
 	{
 		*cmdCode = CBL_CMD_JUMP_TO;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_FLASH_ERASE, strlen(CBL_TXTCMD_FLASH_ERASE)) == 0)
+	else if (len == strlen(CBL_TXTCMD_FLASH_ERASE)
+			&& strncmp(buf, CBL_TXTCMD_FLASH_ERASE, strlen(CBL_TXTCMD_FLASH_ERASE)) == 0)
 	{
 		*cmdCode = CBL_CMD_FLASH_ERASE;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_EN_RW_PR, strlen(CBL_TXTCMD_EN_RW_PR)) == 0)
+	else if (len == strlen(CBL_TXTCMD_EN_RW_PR)
+			&& strncmp(buf, CBL_TXTCMD_EN_RW_PR, strlen(CBL_TXTCMD_EN_RW_PR)) == 0)
 	{
 		*cmdCode = CBL_CMD_EN_RW_PR;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_DIS_RW_PR, strlen(CBL_TXTCMD_DIS_RW_PR)) == 0)
+	else if (len == strlen(CBL_TXTCMD_DIS_RW_PR)
+			&& strncmp(buf, CBL_TXTCMD_DIS_RW_PR, strlen(CBL_TXTCMD_DIS_RW_PR)) == 0)
 	{
 		*cmdCode = CBL_CMD_DIS_RW_PR;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_MEM_READ, strlen(CBL_TXTCMD_MEM_READ)) == 0)
+	else if (len == strlen(CBL_TXTCMD_MEM_READ)
+			&& strncmp(buf, CBL_TXTCMD_MEM_READ, strlen(CBL_TXTCMD_MEM_READ)) == 0)
 	{
 		*cmdCode = CBL_CMD_MEM_READ;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_GET_SECT_STAT, strlen(CBL_TXTCMD_GET_SECT_STAT)) == 0)
+	else if (len == strlen(CBL_TXTCMD_GET_SECT_STAT)
+			&& strncmp(buf, CBL_TXTCMD_GET_SECT_STAT, strlen(CBL_TXTCMD_GET_SECT_STAT)) == 0)
 	{
 		*cmdCode = CBL_CMD_GET_SECT_STAT;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_OTP_READ, strlen(CBL_TXTCMD_OTP_READ)) == 0)
+	else if (len == strlen(CBL_TXTCMD_OTP_READ)
+			&& strncmp(buf, CBL_TXTCMD_OTP_READ, strlen(CBL_TXTCMD_OTP_READ)) == 0)
 	{
 		*cmdCode = CBL_CMD_OTP_READ;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_MEM_WRITE, strlen(CBL_TXTCMD_MEM_WRITE)) == 0)
+	else if (len == strlen(CBL_TXTCMD_MEM_WRITE)
+			&& strncmp(buf, CBL_TXTCMD_MEM_WRITE, strlen(CBL_TXTCMD_MEM_WRITE)) == 0)
 	{
 		*cmdCode = CBL_CMD_MEM_WRITE;
 	}
-	else if (strncmp(buf, CBL_TXTCMD_EXIT, strlen(CBL_TXTCMD_EXIT)) == 0)
+	else if (len == strlen(CBL_TXTCMD_EXIT)
+			&& strncmp(buf, CBL_TXTCMD_EXIT, strlen(CBL_TXTCMD_EXIT)) == 0)
 	{
 		*cmdCode = CBL_CMD_EXIT;
 	}
