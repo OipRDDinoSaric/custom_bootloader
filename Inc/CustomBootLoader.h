@@ -12,8 +12,9 @@
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
-#define CBL_ADDR_USERAPP 0x08008000U /* address of MSP of user application */
-#define BUF_CMD_SZ 10 /* size of a new command buffer */
+#define CBL_ADDR_USERAPP 0x08008000U /*!< address of MSP of user application */
+#define CBL_CMD_BUF_SZ 128 /*!< size of a new command buffer */
+#define CBL_MAX_ARGS 8 /*!< maximum number of arguments in an input cmd */
 
 #define ERR_CHECK(x) 	do						\
 						{						\
@@ -24,16 +25,30 @@
 
 typedef enum CBL_ErrCode_e
 {
-	CBL_ERR_OK = 0, /* No error, we gucci */
-	CBL_ERR_READ_OF, /* Buffer overflowed while reading */
-	CBL_ERR_WRITE, /* Error while writing */
-	CBL_ERR_STATE, /* Unexpected state requested */
-	CBL_ERR_HAL_TX, /* Error happened in HAL library while transmiting */
-	CBL_ERR_HAL_RX, /* Error happened in HAL library while receiving */
-	CBL_ERR_RX_ABORT, /* Error happened while aborting receive */
-	CBL_ERR_CMD_SHORT, /* Received command is of length 0 */
-	CBL_ERR_CMD_UNDEF /* Received command is invalid */
-} CBL_Err_Code_t;
+	CBL_ERR_OK = 0, /*!< No error, we gucci */
+	CBL_ERR_READ_OF, /*!< Buffer overflowed while reading */
+	CBL_ERR_WRITE, /*!< Error while writing */
+	CBL_ERR_STATE, /*!< Unexpected state requested */
+	CBL_ERR_HAL_TX, /*!< Error happened in HAL library while transmiting */
+	CBL_ERR_HAL_RX, /*!< Error happened in HAL library while receiving */
+	CBL_ERR_RX_ABORT, /*!< Error happened while aborting receive */
+	CBL_ERR_CMD_SHORT, /*!< Received command is of length 0 */
+	CBL_ERR_CMD_UNDEF /*!< Received command is invalid */
+} CBL_ErrCode_t;
+
+typedef struct CBL_Parser_s
+{
+	char *cmd; /*!< Command buffer */
+	size_t len; /*!< length of the whole cmd string */
+	char *args[CBL_MAX_ARGS][2]; /*!< Pointers to a buffers holding name and value of an argument */
+	uint8_t numOfArgs;
+} CBL_Parser_t;
+
+typedef enum CBL_CmdArg_e
+{
+	CBL_ARG_NAME = 0,
+	CBL_ARG_VAL = 1
+} CBL_CmdArg_t;
 
 #define CBL_TXTCMD_VERSION "version"
 #define CBL_TXTCMD_HELP "help"
@@ -69,9 +84,9 @@ typedef enum CBL_CMD_e
 
 typedef enum CBL_ShellStates_e
 {
-	CBL_STAT_OPER, /* Operational state */
-	CBL_STAT_ERR, /* Error state */
-	CBL_STAT_EXIT /* Deconstructor state */
+	CBL_STAT_OPER, /*!< Operational state */
+	CBL_STAT_ERR, /*!< Error state */
+	CBL_STAT_EXIT /*!< Deconstructor state */
 } CBL_sysStates_t;
 
 void CBL_Start(void);

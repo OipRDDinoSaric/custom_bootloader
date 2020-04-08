@@ -2,20 +2,21 @@
 
 static void cbl_ShellInit(void);
 static void cbl_RunUserApp(void);
-static CBL_Err_Code_t cbl_RunShellSystem(void);
-static CBL_Err_Code_t cbl_StateOperation(void);
-static CBL_Err_Code_t cbl_WaitForCmd(out char* buf, size_t len);
-static CBL_Err_Code_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
-static CBL_Err_Code_t cbl_SendToHost(out char *buf, size_t len);
-static CBL_Err_Code_t cbl_RecvFromHost(out char *buf, size_t len);
+static CBL_ErrCode_t cbl_RunShellSystem(void);
+static CBL_ErrCode_t cbl_StateOperation(void);
+static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len);
+static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
+static CBL_ErrCode_t cbl_SendToHost(out char *buf, size_t len);
+static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len);
 //static CBL_Err_Code_t cbl_StopRecvFromHost();
-static CBL_Err_Code_t cbl_StateError(CBL_Err_Code_t eCode);
+static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode);
 
 static uint32_t cntrRecvChar = 0;
 
 void CBL_Start()
 {
-	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	INFO("Custom bootloader started\r\n");
 	if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
 	{
@@ -94,9 +95,9 @@ static void cbl_RunUserApp(void)
  * @brief	Runs the shell for the bootloader.
  * @return	CBL_ERR_NO when no error, else returns an error code.
  */
-static CBL_Err_Code_t cbl_RunShellSystem(void)
+static CBL_ErrCode_t cbl_RunShellSystem(void)
 {
-	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	bool isExitReq = false;
 	CBL_sysStates_t state = CBL_STAT_ERR, nextState;
 
@@ -156,25 +157,29 @@ static CBL_Err_Code_t cbl_RunShellSystem(void)
 	return eCode;
 }
 
-static CBL_Err_Code_t cbl_StateOperation(void)
+static CBL_ErrCode_t cbl_StateOperation(void)
 {
-	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	CBL_CMD_t cmdCode = CBL_CMD_UNDEF;
-	char cmd[BUF_CMD_SZ] = { 0 };
+	CBL_Parser_t parser = { 0 };
+	char cmd[CBL_CMD_BUF_SZ] = { 0 };
 
-	eCode = cbl_WaitForCmd(cmd, BUF_CMD_SZ);
+	eCode = cbl_WaitForCmd(cmd, CBL_CMD_BUF_SZ);
+	ERR_CHECK(eCode);
+
+	eCode = cbl_ParseCmd(cmd, strlen(cmd), &parser);
 	ERR_CHECK(eCode);
 
 	eCode = cbl_EnumCmd(cmd, strlen(cmd), &cmdCode);
 	ERR_CHECK(eCode);
 
-//	cbl_HandleCmd();
+//	eCode = cbl_HandleCmd();
 	return eCode;
 }
 
-static CBL_Err_Code_t cbl_WaitForCmd(out char* buf, size_t len)
+static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len)
 {
-	CBL_Err_Code_t eCode = CBL_ERR_OK;
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	bool isLastCharCR = false, isOverflow = true;
 	uint32_t i = 0;
 	cntrRecvChar = 0;
@@ -223,9 +228,72 @@ static CBL_Err_Code_t cbl_WaitForCmd(out char* buf, size_t len)
 	return eCode;
 }
 
-static CBL_Err_Code_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode)
+/**
+ * @brief		Parses a command into CBL_Parser_t. Command's form is as follows:
+ * 				somecmd pname1=pval1 pname2=pval2
+ * @note		This function is destructive to input cmd, as it replaces all ' ' and '='
+ * 				with '\0'
+ * @param cmd	NULL terminated string containing command without \r\n
+ * @param len	length of string contained in cmd
+ * @param p		Function assumes empty parser p
+ * @return
+ */
+static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
 {
-	CBL_Err_Code_t eCode = CBL_CMD_UNDEF;
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char *pSpa = NULL, *pEqu = NULL, *pLastChar = &cmd[len];
+	uint8_t i;
+
+	/* Convert the string to lower case */
+	strlwr(cmd);
+
+	/* Find the first ' ' */
+	pSpa = memchr(cmd, ' ', len);
+	/* Command name ends with ' ' */
+	*pSpa = '\0';
+
+	for (i = 0; i < CBL_MAX_ARGS; i++)
+	{
+
+		/* Find an end of the param name */
+		pEqu = memchr(pSpa, '=', pLastChar - pSpa);
+
+		if (pEqu == NULL)
+		{
+			/* Exit from the loop as there is no value for the argument */
+			break;
+		}
+
+		/* Argument starts after ' ' */
+		p->args[i][CBL_ARG_NAME] = (pSpa + 1);
+		/* Arguments end with '=' */
+		*pEqu = '\0';
+
+		/* Parameter value starts after '=' */
+		p->args[i][CBL_ARG_VAL] = (pEqu + 1);
+
+		/* Find the next space */
+		pSpa = memchr(pEqu, ' ', pLastChar - pEqu);
+
+		if (pSpa == NULL)
+		{
+			/* Exit the loop as there are parameters */
+			break;
+		}
+		/* Argument value ends with ' ' */
+		*pSpa = '\0';
+	}
+
+	p->cmd = cmd;
+	p->len = len;
+	p->numOfArgs = i;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	if (len == 0)
 	{
 		eCode = CBL_ERR_CMD_SHORT;
@@ -288,7 +356,7 @@ static CBL_Err_Code_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdC
 	return eCode;
 }
 
-static CBL_Err_Code_t cbl_SendToHost(out char *buf, size_t len)
+static CBL_ErrCode_t cbl_SendToHost(out char *buf, size_t len)
 {
 	if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY) == HAL_OK)
 	{
@@ -300,7 +368,7 @@ static CBL_Err_Code_t cbl_SendToHost(out char *buf, size_t len)
 	}
 }
 
-static CBL_Err_Code_t cbl_RecvFromHost(out char *buf, size_t len)
+static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len)
 {
 	if (HAL_UART_Receive_DMA(pUARTCmd, (uint8_t *)buf, len) == HAL_OK)
 	{
@@ -324,7 +392,7 @@ static CBL_Err_Code_t cbl_RecvFromHost(out char *buf, size_t len)
 //	}
 //}
 
-static CBL_Err_Code_t cbl_StateError(CBL_Err_Code_t eCode)
+static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 {
 
 	switch (eCode)
