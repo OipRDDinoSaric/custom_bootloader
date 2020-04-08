@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include "usart.h"
 #include "dma.h"
 
@@ -23,6 +24,8 @@
 						}						\
 						while(0)
 
+#define CRLF "\r\n"
+
 typedef enum CBL_ErrCode_e
 {
 	CBL_ERR_OK = 0, /*!< No error, we gucci */
@@ -33,22 +36,25 @@ typedef enum CBL_ErrCode_e
 	CBL_ERR_HAL_RX, /*!< Error happened in HAL library while receiving */
 	CBL_ERR_RX_ABORT, /*!< Error happened while aborting receive */
 	CBL_ERR_CMD_SHORT, /*!< Received command is of length 0 */
-	CBL_ERR_CMD_UNDEF /*!< Received command is invalid */
+	CBL_ERR_CMD_UNDEF, /*!< Received command is invalid */
+	CBL_ERR_CMDCD /*!< Invalid command code enumerator */
 } CBL_ErrCode_t;
+
+typedef enum CBL_CmdArg_e
+{
+	CBL_ARG_NAME = 0,
+	CBL_ARG_VAL = 1,
+	CBL_ARG_MAX = 2
+} CBL_CmdArg_t;
 
 typedef struct CBL_Parser_s
 {
 	char *cmd; /*!< Command buffer */
 	size_t len; /*!< length of the whole cmd string */
-	char *args[CBL_MAX_ARGS][2]; /*!< Pointers to a buffers holding name and value of an argument */
+	char *args[CBL_MAX_ARGS][CBL_ARG_MAX]; /*!< Pointers to a buffers holding name and value of an argument */
 	uint8_t numOfArgs;
 } CBL_Parser_t;
 
-typedef enum CBL_CmdArg_e
-{
-	CBL_ARG_NAME = 0,
-	CBL_ARG_VAL = 1
-} CBL_CmdArg_t;
 
 #define CBL_TXTCMD_VERSION "version"
 #define CBL_TXTCMD_HELP "help"

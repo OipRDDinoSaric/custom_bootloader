@@ -8,7 +8,7 @@ static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len);
 static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
 static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p);
-static CBL_ErrCode_t cbl_SendToHost(out char *buf, size_t len);
+static CBL_ErrCode_t cbl_SendToHost(const char *buf, size_t len);
 static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len);
 //static CBL_Err_Code_t cbl_StopRecvFromHost();
 static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode);
@@ -27,6 +27,47 @@ static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p);
 
 static uint32_t cntrRecvChar = 0;
+
+static const char *cbl_supported_cmds = ""
+		"Custom STM32F4 bootloader by Dino Saric - " CBL_VERSION CRLF CRLF
+"Optional parameters are surrounded with [] " CRLF CRLF
+"Supported commands:" CRLF
+"- " CBL_TXTCMD_VERSION " | Gets the current version of the running bootloader" CRLF
+
+"- " CBL_TXTCMD_HELP " | Makes life easier" CRLF
+
+"- " CBL_TXTCMD_CID " | Gets chip identification number" CRLF
+
+"- " CBL_TXTCMD_RDP_STATUS " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_JUMP_TO " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_FLASH_ERASE " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_EN_RW_PR " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_DIS_RW_PR " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_GET_SECT_STAT " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_OTP_READ " | TODO" CRLF
+"     " CRLF
+
+"- " CBL_TXTCMD_MEM_WRITE " | TODO" CRLF
+"     " CRLF
+
+"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF;
+
+static bool isExitReq = false;
 
 void CBL_Start()
 {
@@ -94,16 +135,26 @@ static void cbl_RunUserApp(void)
 	uint32_t addressRstHndl;
 	volatile uint32_t msp_value = *(volatile uint32_t *)CBL_ADDR_USERAPP;
 
+	char userAppHello[] = "Jumping to user application :)\r\n";
+
+	/* Send hello message to user and debug output */
+	cbl_SendToHost(userAppHello, strlen(userAppHello));
+	INFO("%s", userAppHello);
+
+	addressRstHndl = *(volatile uint32_t *) (CBL_ADDR_USERAPP + 4);
+
+	userAppResetHandler = (void *)addressRstHndl;
+
 	DEBUG("MSP value: %#x\r\n", (unsigned int ) msp_value);
+	DEBUG("Reset handler address: %#x\r\n", (unsigned int ) addressRstHndl);
+
 	/* function from CMSIS */
 	__set_MSP(msp_value);
 
-	addressRstHndl = *(volatile uint32_t *) (CBL_ADDR_USERAPP + 4);
-	DEBUG("Reset handler address: %#x\r\n", (unsigned int ) addressRstHndl);
-
-	userAppResetHandler = (void *)addressRstHndl;
-	INFO("Jumping to user application\r\n");
+	/* Give control to user application */
 	userAppResetHandler();
+
+	/* Never reached */
 }
 /**
  * @brief	Runs the shell for the bootloader.
@@ -112,7 +163,7 @@ static void cbl_RunUserApp(void)
 static CBL_ErrCode_t cbl_RunShellSystem(void)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	bool isExitReq = false;
+	bool isExitNeeded = false;
 	CBL_sysStates_t state = CBL_STAT_ERR, nextState;
 
 	INFO("Starting bootloader\r\n");
@@ -120,7 +171,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 	nextState = state;
 	cbl_ShellInit();
 
-	while (isExitReq == false)
+	while (isExitNeeded == false)
 	{
 		switch (state)
 		{
@@ -157,7 +208,13 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 			case CBL_STAT_EXIT:
 			{
 				/* Deconstructor */
-				isExitReq = true;
+				char bye[] = "Exiting shell :(\r\n";
+
+				INFO(bye);
+				cbl_SendToHost(bye, strlen(bye));
+
+				isExitNeeded = true;
+
 				break;
 			}
 			default:
@@ -461,12 +518,11 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 			eCode = CBL_ERR_CMDCD;
 		}
 	}
-
+	DEBUG("Responded\r\n");
 	return eCode;
 }
 
-
-static CBL_ErrCode_t cbl_SendToHost(out char *buf, size_t len)
+static CBL_ErrCode_t cbl_SendToHost(const char *buf, size_t len)
 {
 	if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY) == HAL_OK)
 	{
@@ -576,12 +632,24 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 }
 
 /*********************************************************/
-				/**Function handles**/
+/**Function handles**/
 /*********************************************************/
 
+/**
+ * @brief
+ * @return
+ */
 static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char verbuf[12] = CBL_VERSION;
+
+	DEBUG("Started\r\n");
+
+	/* End with a new line */
+	strlcat(verbuf, CRLF , 12);
+
+	cbl_SendToHost(verbuf, strlen(verbuf));
 
 	return eCode;
 }
@@ -590,12 +658,31 @@ static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
+
+	cbl_SendToHost(cbl_supported_cmds, strlen(cbl_supported_cmds));
+
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char cid[14] = "0x", cidhelp[10];
+
+	DEBUG("Started\r\n");
+
+	/* Convert hex value to text */
+	itoa((int )(DBGMCU->IDCODE & 0x00000FFF), cidhelp, 16);
+
+	/* Add 0x to to beginning */
+	strlcat(cid, cidhelp, 12);
+
+	/* End with a new line */
+	strlcat(cid, CRLF, 12);
+
+	/* Send response */
+	cbl_SendToHost(cid, strlen(cid));
 
 	return eCode;
 }
@@ -604,6 +691,7 @@ static CBL_ErrCode_t cbl_HandleCmdRDPStatus(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -611,6 +699,7 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -618,6 +707,7 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -625,6 +715,7 @@ static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -632,6 +723,7 @@ static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -639,6 +731,7 @@ static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -646,6 +739,7 @@ static CBL_ErrCode_t cbl_HandleCmdGetSectStat(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -653,6 +747,7 @@ static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
@@ -660,12 +755,17 @@ static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
+	DEBUG("Started\r\n");
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	DEBUG("Started\r\n");
+
+	isExitReq = true;
 
 	return eCode;
 }
