@@ -7,10 +7,24 @@ static CBL_ErrCode_t cbl_StateOperation(void);
 static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len);
 static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
+static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p);
 static CBL_ErrCode_t cbl_SendToHost(out char *buf, size_t len);
 static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len);
 //static CBL_Err_Code_t cbl_StopRecvFromHost();
 static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode);
+static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdRDPStatus(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdGetSectStat(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p);
 
 static uint32_t cntrRecvChar = 0;
 
@@ -173,7 +187,7 @@ static CBL_ErrCode_t cbl_StateOperation(void)
 	eCode = cbl_EnumCmd(parser.cmd, strlen(cmd), &cmdCode);
 	ERR_CHECK(eCode);
 
-//	eCode = cbl_HandleCmd();
+	eCode = cbl_HandleCmd(cmdCode, &parser);
 	return eCode;
 }
 
@@ -369,6 +383,89 @@ static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 	return eCode;
 }
 
+static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	switch (cmdCode)
+	{
+		case CBL_CMD_VERSION:
+		{
+			eCode = cbl_HandleCmdVersion(p);
+			break;
+		}
+		case CBL_CMD_HELP:
+		{
+			eCode = cbl_HandleCmdHelp(p);
+			break;
+		}
+		case CBL_CMD_CID:
+		{
+			eCode = cbl_HandleCmdCid(p);
+			break;
+		}
+		case CBL_CMD_RDP_STATUS:
+		{
+			eCode = cbl_HandleCmdRDPStatus(p);
+			break;
+		}
+		case CBL_CMD_JUMP_TO:
+		{
+			eCode = cbl_HandleCmdJumpTo(p);
+			break;
+		}
+		case CBL_CMD_FLASH_ERASE:
+		{
+			eCode = cbl_HandleCmdFlashErase(p);
+			break;
+		}
+		case CBL_CMD_EN_RW_PR:
+		{
+			eCode = cbl_HandleCmdEnRWPr(p);
+			break;
+		}
+		case CBL_CMD_DIS_RW_PR:
+		{
+			eCode = cbl_HandleCmdDisRWPr(p);
+			break;
+		}
+		case CBL_CMD_MEM_READ:
+		{
+			eCode = cbl_HandleCmdMemRead(p);
+			break;
+		}
+		case CBL_CMD_GET_SECT_STAT:
+		{
+			eCode = cbl_HandleCmdGetSectStat(p);
+			break;
+		}
+		case CBL_CMD_OTP_READ:
+		{
+			eCode = cbl_HandleCmdOTPRead(p);
+			break;
+		}
+		case CBL_CMD_MEM_WRITE:
+		{
+			eCode = cbl_HandleCmdMemWrite(p);
+			break;
+		}
+		case CBL_CMD_EXIT:
+		{
+			eCode = cbl_HandleCmdExit(p);
+			break;
+		}
+		case CBL_CMD_UNDEF:
+			/* No break */
+		default:
+		{
+			eCode = CBL_ERR_CMDCD;
+		}
+	}
+
+	return eCode;
+}
+
+
 static CBL_ErrCode_t cbl_SendToHost(out char *buf, size_t len)
 {
 	if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY) == HAL_OK)
@@ -478,3 +575,97 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 	}
 }
 
+/*********************************************************/
+				/**Function handles**/
+/*********************************************************/
+
+static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdRDPStatus(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdGetSectStat(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
+
+static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	return eCode;
+}
