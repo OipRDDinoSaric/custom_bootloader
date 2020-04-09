@@ -6,6 +6,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void);
 static CBL_ErrCode_t cbl_StateOperation(void);
 static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len);
 static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p);
+static char *cbl_ParserGetArgVal(CBL_Parser_t *p, char * name, size_t lenName);
 static CBL_ErrCode_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
 static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p);
 static CBL_ErrCode_t cbl_SendToHost(const char *buf, size_t len);
@@ -15,8 +16,9 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode);
 static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdRDPStatus(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdGetRDPLvl(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr);
 static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p);
@@ -28,46 +30,46 @@ static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p);
 
 static uint32_t cntrRecvChar = 0;
 
-static const char *cbl_supported_cmds = ""
-		"Custom STM32F4 bootloader by Dino Saric - " CBL_VERSION CRLF CRLF
-"Optional parameters are surrounded with [] " CRLF CRLF
-"Supported commands:" CRLF
-"- " CBL_TXTCMD_VERSION " | Gets the current version of the running bootloader" CRLF
-
-"- " CBL_TXTCMD_HELP " | Makes life easier" CRLF
-
-"- " CBL_TXTCMD_CID " | Gets chip identification number" CRLF
-
-"- " CBL_TXTCMD_RDP_STATUS " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_JUMP_TO " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_FLASH_ERASE " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_EN_RW_PR " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_DIS_RW_PR " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_GET_SECT_STAT " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_OTP_READ " | TODO" CRLF
-"     " CRLF
-
-"- " CBL_TXTCMD_MEM_WRITE " | TODO" CRLF
-"     " CRLF
-
-"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF;
-
 static bool isExitReq = false;
+
+static const char *cbl_supported_cmds =
+		""
+				"Custom STM32F4 bootloader by Dino Saric - " CBL_VERSION CRLF CRLF
+		"Optional parameters are surrounded with [] " CRLF CRLF
+		"Supported commands:" CRLF
+		"- " CBL_TXTCMD_VERSION " | Gets the current version of the running bootloader" CRLF
+
+		"- " CBL_TXTCMD_HELP " | Makes life easier" CRLF
+
+		"- " CBL_TXTCMD_CID " | Gets chip identification number" CRLF
+
+		"- " CBL_TXTCMD_GET_RDP_LVL " |  Read protection. Used to protect the software code stored in Flash memory."
+		" Ref. man. p. 93" CRLF
+		"- " CBL_TXTCMD_JUMP_TO " | Jumps to a requested address" CRLF
+		"    " CBL_TXTCMD_JUMP_TO_ADDR " - address to jump to in hex format (e.g. 0x12345678), 0x can be omitted. " CRLF
+
+		"- " CBL_TXTCMD_FLASH_ERASE " | TODO" CRLF
+		"     " CRLF
+
+		"- " CBL_TXTCMD_EN_RW_PR " | TODO" CRLF
+		"     " CRLF
+
+		"- " CBL_TXTCMD_DIS_RW_PR " | TODO" CRLF
+		"     " CRLF
+
+		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
+		"     " CRLF
+
+		"- " CBL_TXTCMD_GET_SECT_STAT " | TODO" CRLF
+		"     " CRLF
+
+		"- " CBL_TXTCMD_OTP_READ " | TODO" CRLF
+		"     " CRLF
+
+		"- " CBL_TXTCMD_MEM_WRITE " | TODO" CRLF
+		"     " CRLF
+
+		"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF;
 
 void CBL_Start()
 {
@@ -104,7 +106,7 @@ static void cbl_ShellInit(void)
 	"            University of Zagreb             \r\n"
 	"                     2020                    \r\n"
 	"*********************************************\r\n"
-	"      User manual is present under /docs     \r\n"
+	"          If confused type \"help\"          \r\n"
 	"*********************************************\r\n";
 	MX_DMA_Init();
 	MX_USART2_UART_Init();
@@ -169,6 +171,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 	INFO("Starting bootloader\r\n");
 
 	nextState = state;
+
 	cbl_ShellInit();
 
 	while (isExitNeeded == false)
@@ -194,7 +197,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 			{
 				eCode = cbl_StateError(eCode);
 
-				/* Switch state if needed */
+				/* Switch state */
 				if (eCode != CBL_ERR_OK)
 				{
 					nextState = CBL_STAT_EXIT;
@@ -208,7 +211,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 			case CBL_STAT_EXIT:
 			{
 				/* Deconstructor */
-				char bye[] = "Exiting shell :(\r\n";
+				char bye[] = "Exiting shell :(\r\n\r\n";
 
 				INFO(bye);
 				cbl_SendToHost(bye, strlen(bye));
@@ -290,7 +293,7 @@ static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len)
 		/* prepare for next char */
 		i++;
 	}
-	/* If DMA fills the buffer and no command is received throw an error */
+	/* If DMA fills the buffer and no CRLF is received throw an error */
 	if (isOverflow == true)
 	{
 		eCode = CBL_ERR_READ_OF;
@@ -306,7 +309,7 @@ static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len)
  * 				with '\0'
  * @param cmd	NULL terminated string containing command without \r\n
  * @param len	length of string contained in cmd
- * @param p		Function assumes empty parser p
+ * @param p		Function assumes empty parser p on entrance
  * @return
  */
 static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
@@ -320,11 +323,11 @@ static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
 
 	/* Find the first ' ' */
 	pSpa = memchr(cmd, ' ', len);
-	/* Command name ends with ' ' */
-	*pSpa = '\0';
 
-	for (i = 0; i < CBL_MAX_ARGS; i++)
+	for (i = 0; i < CBL_MAX_ARGS && pSpa != NULL; i++)
 	{
+		/* Command name/value name ends with ' ', replace with '\0' */
+		*pSpa = '\0';
 
 		/* Find an end of the param name */
 		pEqu = memchr(pSpa, '=', pLastChar - pSpa);
@@ -337,7 +340,7 @@ static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
 
 		/* Argument starts after ' ' */
 		p->args[i][CBL_ARG_NAME] = (pSpa + 1);
-		/* Arguments end with '=' */
+		/* Arguments end with '=', replace with '\0' */
 		*pEqu = '\0';
 
 		/* Parameter value starts after '=' */
@@ -345,14 +348,6 @@ static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
 
 		/* Find the next space */
 		pSpa = memchr(pEqu, ' ', pLastChar - pEqu);
-
-		if (pSpa == NULL)
-		{
-			/* Exit the loop as there are parameters */
-			break;
-		}
-		/* Argument value ends with ' ' */
-		*pSpa = '\0';
 	}
 
 	p->cmd = cmd;
@@ -360,6 +355,25 @@ static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
 	p->numOfArgs = i;
 
 	return eCode;
+}
+
+static char *cbl_ParserGetArgVal(CBL_Parser_t *p, char * name, size_t lenName)
+{
+	size_t lenArgName;
+
+	/* Walk through all the parameters */
+	for (uint32_t i = 0; i < p->numOfArgs; i++)
+	{
+		/* Get the length of ith parameter */
+		lenArgName = strlen(p->args[i][CBL_ARG_NAME]);
+
+		/* Check if ith parameter is the requested one */
+		if (lenArgName == lenName && strncmp(p->args[i][CBL_ARG_NAME], name, lenArgName) == 0)
+			return p->args[i][CBL_ARG_VAL];
+	}
+
+	/* No parameter with name 'name' found */
+	return NULL;
 }
 
 static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
@@ -384,10 +398,10 @@ static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 	{
 		*cmdCode = CBL_CMD_CID;
 	}
-	else if (len == strlen(CBL_TXTCMD_RDP_STATUS)
-			&& strncmp(buf, CBL_TXTCMD_RDP_STATUS, strlen(CBL_TXTCMD_RDP_STATUS)) == 0)
+	else if (len == strlen(CBL_TXTCMD_GET_RDP_LVL)
+			&& strncmp(buf, CBL_TXTCMD_GET_RDP_LVL, strlen(CBL_TXTCMD_GET_RDP_LVL)) == 0)
 	{
-		*cmdCode = CBL_CMD_RDP_STATUS;
+		*cmdCode = CBL_CMD_GET_RDP_LVL;
 	}
 	else if (len == strlen(CBL_TXTCMD_JUMP_TO)
 			&& strncmp(buf, CBL_TXTCMD_JUMP_TO, strlen(CBL_TXTCMD_JUMP_TO)) == 0)
@@ -461,9 +475,9 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 			eCode = cbl_HandleCmdCid(p);
 			break;
 		}
-		case CBL_CMD_RDP_STATUS:
+		case CBL_CMD_GET_RDP_LVL:
 		{
-			eCode = cbl_HandleCmdRDPStatus(p);
+			eCode = cbl_HandleCmdGetRDPLvl(p);
 			break;
 		}
 		case CBL_CMD_JUMP_TO:
@@ -512,7 +526,6 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 			break;
 		}
 		case CBL_CMD_UNDEF:
-			/* No break */
 		default:
 		{
 			eCode = CBL_ERR_CMDCD;
@@ -560,11 +573,12 @@ static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len)
 
 static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 {
-
+	DEBUG("Started\r\n");
 	switch (eCode)
 	{
 		case CBL_ERR_OK:
 		{
+			/* FALSE ALARM - no error */
 			break;
 		}
 		case CBL_ERR_READ_OF:
@@ -577,27 +591,32 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		}
 		case CBL_ERR_WRITE:
 		{
-
+			WARNING("Error occurred while writing\r\n");
+			eCode = CBL_ERR_OK;
 			break;
 		}
 		case CBL_ERR_STATE:
 		{
-
+			WARNING("System entered unknown state, returning to operational\r\n");
+			eCode = CBL_ERR_OK;
 			break;
 		}
 		case CBL_ERR_HAL_TX:
 		{
 			WARNING("HAL transmit error happened\r\n");
+			eCode = CBL_ERR_OK;
 			break;
 		}
 		case CBL_ERR_HAL_RX:
 		{
 			WARNING("HAL receive error happened\r\n");
+			eCode = CBL_ERR_OK;
 			break;
 		}
 		case CBL_ERR_RX_ABORT:
 		{
 			WARNING("Error happened while aborting receive\r\n");
+			eCode = CBL_ERR_OK;
 			break;
 		}
 		case CBL_ERR_CMD_SHORT:
@@ -610,6 +629,22 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		{
 			char msg[] = "\r\nERROR: Invalid command\r\n";
 			INFO("Client sent an invalid command\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_NEED_PARAM:
+		{
+			char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
+			INFO("Command is missing parameter(s)");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_INV_ADDR:
+		{
+			char msg[] = "\r\nERROR: Invalid address\r\nJumpable regions: FLASH, SRAM1, SRAM2, CCMRAM, BKPSRAM and SYSMEM\r\n";
+			INFO("Invalid address inputed\r\n");
 			cbl_SendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
@@ -647,9 +682,10 @@ static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p)
 	DEBUG("Started\r\n");
 
 	/* End with a new line */
-	strlcat(verbuf, CRLF , 12);
+	strlcat(verbuf, CRLF, 12);
 
-	cbl_SendToHost(verbuf, strlen(verbuf));
+	/* Send response */
+	eCode = cbl_SendToHost(verbuf, strlen(verbuf));
 
 	return eCode;
 }
@@ -660,7 +696,8 @@ static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p)
 
 	DEBUG("Started\r\n");
 
-	cbl_SendToHost(cbl_supported_cmds, strlen(cbl_supported_cmds));
+	/* Send response */
+	eCode = cbl_SendToHost(cbl_supported_cmds, strlen(cbl_supported_cmds));
 
 	return eCode;
 }
@@ -673,7 +710,7 @@ static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
 	DEBUG("Started\r\n");
 
 	/* Convert hex value to text */
-	itoa((int )(DBGMCU->IDCODE & 0x00000FFF), cidhelp, 16);
+	itoa((int) (DBGMCU->IDCODE & 0x00000FFF), cidhelp, 16);
 
 	/* Add 0x to to beginning */
 	strlcat(cid, cidhelp, 12);
@@ -682,80 +719,197 @@ static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
 	strlcat(cid, CRLF, 12);
 
 	/* Send response */
-	cbl_SendToHost(cid, strlen(cid));
+	eCode = cbl_SendToHost(cid, strlen(cid));
 
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdRDPStatus(CBL_Parser_t *p)
+/**
+ * @brief	RDP - Read protection
+ * 				- Used to protect the software code stored in Flash memory.
+ * 				- Reference manual - p. 93 - Explanation of RDP
+ */
+static CBL_ErrCode_t cbl_HandleCmdGetRDPLvl(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	FLASH_OBProgramInitTypeDef optBytes;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	HAL_FLASHEx_OBGetConfig( &optBytes);
+
+	/* Fill buffer with correct value of RDP */
+	switch (optBytes.RDPLevel)
+	{
+		case OB_RDP_LEVEL_0:
+		{
+			strcpy(buf, "level 0");
+			break;
+		}
+		case OB_RDP_LEVEL_2:
+		{
+			strcpy(buf, "level 2");
+			break;
+		}
+		default:
+		{
+			/* Any other value is RDP level 1 */
+			strcpy(buf, "level 1");
+		}
+	}
+
+	strlcat(buf, CRLF, 32);
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
+
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "Jumping to requested address", *charAddr;
+	uint32_t addr = 0;
+	void (*jump)(void);
 
 	DEBUG("Started\r\n");
+
+	/* Get the address in hex form */
+	charAddr = cbl_ParserGetArgVal(p, CBL_TXTCMD_JUMP_TO_ADDR, strlen(CBL_TXTCMD_JUMP_TO_ADDR));
+
+	if (charAddr == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Cast the address to uint32_t, skips 0x if present */
+	addr = (uint32_t)strtoul(charAddr, NULL, 16);
+
+	/* Make sure we can jump to the wanted location */
+	eCode = cbl_VerifyJumpAddress(addr);
+	ERR_CHECK(eCode);
+
+	/* Add one to the address to set the T bit */
+	addr++;
+	/**	T bit is 0th bit of a function address and tells the processor
+	 *	if command is ARM T=0 or thumb T=1. STM uses thumb commands.
+	 *	@ref https://www.youtube.com/watch?v=VX_12SjnNhY */
+
+	/* Make a function to jump to */
+	jump = (void *)addr;
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
+	ERR_CHECK(eCode);
+
+	/* Jump to requested address, user ensures requested address is valid */
+	jump();
+	return eCode;
+}
+
+/**
+ * @brief	Verifies address is in jumpable region
+ * @note	Jumping to peripheral memory locations not permitted
+ */
+static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_INV_ADDR;
+
+	if (IS_FLASH_ADDRESS(addr) ||
+	IS_CCMDATARAM_ADDRESS(addr) ||
+	IS_SRAM1_ADDRESS(addr) ||
+	IS_SRAM2_ADDRESS(addr) ||
+	IS_BKPSRAM_ADDRESS(addr) ||
+	IS_SYSMEM_ADDRESS(addr))
+	{
+		eCode = CBL_ERR_OK;
+	}
+
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
+
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdGetSectStat(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[32] = "";
 
 	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = cbl_SendToHost(buf, strlen(buf));
 	return eCode;
 }
 
