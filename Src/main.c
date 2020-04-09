@@ -82,7 +82,7 @@ int main(void)
 
 	/* Used for semihosting (printf) to console */
 #if LOG_EN == true
-	/* if there is a error of multiple definitions exclude ../Src/syscalls.c */
+	/* NOTE: if there is an error of multiple definitions exclude ../Src/syscalls.c from build */
 	initialise_monitor_handles();
 #endif
 	/* USER CODE END Init */

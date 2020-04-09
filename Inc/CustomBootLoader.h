@@ -9,7 +9,7 @@
 #include "usart.h"
 #include "dma.h"
 
-#define CBL_VERSION "v0.1"
+#define CBL_VERSION "v0.2"
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
@@ -17,11 +17,11 @@
 #define CBL_CMD_BUF_SZ 128 /*!< Size of a new command buffer */
 #define CBL_MAX_ARGS 8 /*!< Maximum number of arguments in an input cmd */
 
-#define ERR_CHECK(x) 	do						\
-						{						\
-							if((x) != CBL_ERR_OK) \
-								return (x);		\
-						}						\
+#define ERR_CHECK(x) 	do							\
+						{							\
+							if((x) != CBL_ERR_OK) 	\
+								return (x);			\
+						}							\
 						while(0)
 
 #define CRLF "\r\n"
@@ -30,8 +30,8 @@
 #define CBL_TXTCMD_HELP "help"
 #define CBL_TXTCMD_CID "cid"
 #define CBL_TXTCMD_GET_RDP_LVL "get-rdp-level"
-#define CBL_TXTCMD_JUMP_TO "jump-to" // TODO
-#define CBL_TXTCMD_FLASH_ERASE "flash-erase" // TODO
+#define CBL_TXTCMD_JUMP_TO "jump-to"
+#define CBL_TXTCMD_FLASH_ERASE "flash-erase"
 #define CBL_TXTCMD_EN_RW_PR "en-rw-protect" // TODO
 #define CBL_TXTCMD_DIS_RW_PR "dis-rw-protect" // TODO
 #define CBL_TXTCMD_MEM_READ "mem-read" // TODO
@@ -41,6 +41,8 @@
 #define CBL_TXTCMD_EXIT "exit"
 
 #define CBL_TXTCMD_JUMP_TO_ADDR "addr"
+#define CBL_TXTCMD_FLASH_ERASE_SECT "sector"
+#define CBL_TXTCMD_FLASH_ERASE_COUNT "count"
 
 /* Missing address locations in stm32f407xx.h */
 #define SRAM1_END 0x2001BFFFUL
@@ -49,18 +51,15 @@
 #define SYSMEM_BASE 0x2001FFFFUL
 #define SYSMEM_END  0x1FFF77FFUL
 
-/* No external memory connected */
-// #define EXTMEM_BASE (SRAM1_BASE + )
-// #define EXTMEM_END (SRAM1_BASE + )
-
 #define IS_CCMDATARAM_ADDRESS(x) (((x) >= CCMDATARAM_BASE) && ((x) <= CCMDATARAM_END))
 #define IS_SRAM1_ADDRESS(x) (((x) >= SRAM1_BASE) && ((x) <= SRAM1_END))
 #define IS_SRAM2_ADDRESS(x) (((x) >= SRAM2_BASE) && ((x) <= SRAM2_END))
 #define IS_BKPSRAM_ADDRESS(x) (((x) >= BKPSRAM_BASE) && ((x) <= BKPSRAM_END))
 #define IS_SYSMEM_ADDRESS(x) (((x) >= SYSMEM_BASE) && ((x) <= SYSMEM_END))
 
-/* No external memory connected */
-// #define IS_EXTMEM_ADDRESS(x) (((x) >= EXTMEM_BASE) && ((x) <= EXTMEM_END))
+/* Colors: RED, ORANGE, GREEN and BLUE */
+#define LED_ON(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port, LED_##COLOR##_Pin, GPIO_PIN_SET);
+#define LED_OFF(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port, LED_##COLOR##_Pin, GPIO_PIN_RESET);
 
 typedef enum CBL_ErrCode_e
 {
@@ -76,6 +75,10 @@ typedef enum CBL_ErrCode_e
 	CBL_ERR_CMDCD, /*!< Invalid command code enumerator */
 	CBL_ERR_NEED_PARAM, /*!< Called command is missing a parameter */
 	CBL_ERR_INV_ADDR, /*!< Given address is invalid */
+	CBL_ERR_HAL_ERASE, /*!< HAL error happened while erasing */
+	CBL_ERR_SECTOR, /*!< Error happened while erasing sector */
+	CBL_ERR_INV_SECT, /*!< Wrong sector number given */
+	CBL_ERR_INV_SECT_COUNT, /*!< Wrong sector count given */
 } CBL_ErrCode_t;
 
 typedef enum CBL_CmdArg_e
