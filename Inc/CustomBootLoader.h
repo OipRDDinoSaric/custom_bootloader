@@ -28,6 +28,9 @@
 
 #define CRLF "\r\n"
 
+#define CBL_TXT_SUCCESS "\r\nOK\r\n"
+#define CBL_TXT_SUCCESS_HELP "\\r\\nOK\\r\\n" /*!< Used in help function */
+
 #define CBL_TXTCMD_VERSION "version"
 #define CBL_TXTCMD_HELP "help"
 #define CBL_TXTCMD_CID "cid"
@@ -39,7 +42,7 @@
 #define CBL_TXTCMD_READ_SECT_PROT_STAT "get-sect-prot" // TODO
 #define CBL_TXTCMD_MEM_READ "mem-read" // TODO
 #define CBL_TXTCMD_OTP_READ "otp-read" // TODO
-#define CBL_TXTCMD_FLASH_WRITE "flash-write" // TODO
+#define CBL_TXTCMD_FLASH_WRITE "flash-write"
 #define CBL_TXTCMD_EXIT "exit"
 
 #define CBL_TXTCMD_JUMP_TO_ADDR "addr"
@@ -47,6 +50,10 @@
 #define CBL_TXTCMD_FLASH_ERASE_COUNT "count"
 #define CBL_TXTCMD_FLASH_WRITE_START "start"
 #define CBL_TXTCMD_FLASH_WRITE_COUNT "count"
+#define CBL_TXTCMD_FLASH_ERASE_TYPE "type"
+
+#define CBL_TXTCMD_FLASH_ERASE_TYPE_MASS "mass"
+#define CBL_TXTCMD_FLASH_ERASE_TYPE_SECT "sector"
 
 #define CBL_TXTRESP_FLASH_WRITE_READY "\r\nready\r\n"
 #define CBL_TXTRESP_FLASH_WRITE_READY_HELP "\\r\\nready\\r\\n" /*!< Used in help function*/
@@ -88,7 +95,8 @@ typedef enum CBL_ErrCode_e
 	CBL_ERR_INV_SECT_COUNT, /*!< Wrong sector count given */
 	CBL_ERR_WRITE_INV_ADDR, /*!< Given address can't be written to */
 	CBL_ERR_WRITE_TOO_BIG, /*!< Entered a too large size to write */
-	CBL_ERR_HAL_WRITE /*!< Error on HAL level while writing to flash */
+	CBL_ERR_HAL_WRITE, /*!< Error on HAL level while writing to flash */
+	CBL_ERR_ERASE_INV_TYPE, /*!< Erase command has wrong erase type param */
 } CBL_ErrCode_t;
 
 typedef enum CBL_CmdArg_e

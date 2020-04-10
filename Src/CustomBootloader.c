@@ -33,10 +33,14 @@ static uint32_t cntrRecvChar = 0;
 static bool isExitReq = false;
 
 static const char *cbl_supported_cmds =
-		""
-				"Custom STM32F4 bootloader by Dino Saric - " CBL_VERSION CRLF CRLF
+		"*************************************************************" CRLF
+		"*************************************************************" CRLF
+		"Custom STM32F4 bootloader shell by Dino Saric - " CBL_VERSION "*********" CRLF
+		"*************************************************************" CRLF CRLF
+		"*************************************************************" CRLF
+		"Examples*****************************************************" CRLF
+		"*************************************************************" CRLF CRLF
 		"Optional parameters are surrounded with [] " CRLF CRLF
-		"Supported commands:" CRLF CRLF
 		"- " CBL_TXTCMD_VERSION " | Gets the current version of the running bootloader" CRLF CRLF
 		"- " CBL_TXTCMD_HELP " | Makes life easier" CRLF CRLF
 		"- " CBL_TXTCMD_CID " | Gets chip identification number" CRLF CRLF
@@ -45,9 +49,10 @@ static const char *cbl_supported_cmds =
 		"- " CBL_TXTCMD_JUMP_TO " | Jumps to a requested address" CRLF
 		"    " CBL_TXTCMD_JUMP_TO_ADDR " - Address to jump to in hex format (e.g. 0x12345678), 0x can be omitted. " CRLF CRLF
 		"- " CBL_TXTCMD_FLASH_ERASE " | Erases flash memory" CRLF
-		"    " CBL_TXTCMD_FLASH_ERASE_SECT " - First sector to erase."
-		" If this value is 64 mass erase is conducted. Bootloader is on sectors 0 and 1." CRLF
-		"    " CBL_TXTCMD_FLASH_ERASE_COUNT " - Number of sectors to erase." CRLF CRLF
+		"    " CBL_TXTCMD_FLASH_ERASE_TYPE " - Defines type of flash erase." "\""CBL_TXTCMD_FLASH_ERASE_TYPE_MASS "\" erases all sectors, "
+		"\"" CBL_TXTCMD_FLASH_ERASE_TYPE_SECT "\" erases only selected sectors." CRLF
+		"    " CBL_TXTCMD_FLASH_ERASE_SECT " - First sector to erase. Bootloader is on sectors 0 and 1. Not needed with mass erase." CRLF
+		"    " CBL_TXTCMD_FLASH_ERASE_COUNT " - Number of sectors to erase. Not needed with mass erase." CRLF CRLF
 		"- " CBL_TXTCMD_EN_RW_PR " | TODO" CRLF
 		"     " CRLF CRLF
 		"- " CBL_TXTCMD_DIS_RW_PR " | TODO" CRLF
@@ -61,8 +66,22 @@ static const char *cbl_supported_cmds =
 		"- " CBL_TXTCMD_FLASH_WRITE " | Writes to flash, returns " CBL_TXTRESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
 		"     " CBL_TXTCMD_FLASH_WRITE_START " - Starting address in hex format (e.g. 0x12345678), 0x can be omitted."CRLF
 		"     " CBL_TXTCMD_FLASH_WRITE_COUNT " - Number of bytes to write. Maximum bytes: " CBL_FLASH_WRITE_SZ_TXT CRLF CRLF
-		"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF;
-
+		"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF CRLF
+		"********************************************************" CRLF
+		"Examples************************************************" CRLF
+		"********************************************************" CRLF CRLF
+		"- Erase sectors 2, 3 and 4" CRLF CRLF CBL_TXTCMD_FLASH_ERASE " " CBL_TXTCMD_FLASH_ERASE_TYPE
+		"="CBL_TXTCMD_FLASH_ERASE_TYPE_SECT " " CBL_TXTCMD_FLASH_ERASE_SECT"=2 " CBL_TXTCMD_FLASH_ERASE_COUNT"=3\\r\\n" CRLF CRLF CRLF
+		"- Get version" CRLF CRLF CBL_TXTCMD_VERSION"\\r\\n" CRLF CRLF CRLF
+		"- Jump to address 0x12345678" CRLF CRLF CBL_TXTCMD_JUMP_TO " " CBL_TXTCMD_JUMP_TO_ADDR "=0x12345678\\r\\n" CRLF CRLF CRLF
+		"- Jump to address 0x12345678" CRLF CRLF CBL_TXTCMD_JUMP_TO " " CBL_TXTCMD_JUMP_TO_ADDR "=12345678\\r\\n" CRLF CRLF CRLF
+		"- Flash " CBL_FLASH_WRITE_SZ_TXT " bytes starting from address 0x12345678" CRLF CRLF CBL_TXTCMD_FLASH_WRITE " " CBL_TXTCMD_FLASH_WRITE_COUNT
+		"=" CBL_FLASH_WRITE_SZ_TXT " " CBL_TXTCMD_FLASH_WRITE_START "=0x12345678\\r\\n" CRLF
+		"STM32 returns:" CBL_TXTRESP_FLASH_WRITE_READY_HELP CRLF
+		"*Enter 1024 bytes*" CRLF
+		"STM32 returns: " CBL_TXT_SUCCESS_HELP CRLF CRLF
+		"********************************************************" CRLF
+		"********************************************************" CRLF CRLF;
 void CBL_Start()
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
@@ -262,7 +281,7 @@ static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len)
 	uint32_t i = 0;
 	cntrRecvChar = 0;
 
-	eCode = cbl_SendToHost("\r\n>", 3);
+	eCode = cbl_SendToHost("\r\n> ", 4);
 	ERR_CHECK(eCode);
 
 	/* Read until CRLF or until full DMA*/
@@ -718,6 +737,15 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			eCode = CBL_ERR_OK;
 			break;
 		}
+		case CBL_ERR_ERASE_INV_TYPE:
+		{
+			char msg[] = "\r\nERROR: Invalid erase type\r\n";
+
+			INFO("User entered invalid erase type\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
 		default:
 		{
 			ERROR("Unhandled error happened\r\n");
@@ -840,7 +868,7 @@ static CBL_ErrCode_t cbl_HandleCmdGetRDPLvl(CBL_Parser_t *p)
 static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "Jumping to requested address", *charAddr;
+	char *charAddr;
 	uint32_t addr = 0;
 	void (*jump)(void);
 
@@ -868,7 +896,7 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 	jump = (void *)addr;
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	ERR_CHECK(eCode);
 
 	/* Jump to requested address, user ensures requested address is valid */
@@ -903,7 +931,7 @@ static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr)
 static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "Erased\r\n", *charSect, *charCount;
+	char *charSect, *charCount, *type;
 	uint8_t sect, count;
 	HAL_StatusTypeDef HALCode;
 	uint32_t sectorCode;
@@ -917,29 +945,32 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 	/* Only available bank */
 	settings.Banks = FLASH_BANK_1;
 
-	/* Get first sector to write to */
-	charSect = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_SECT,
-			strlen(CBL_TXTCMD_FLASH_ERASE_SECT));
-	if (charSect == NULL)
+	type = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_TYPE, strlen(CBL_TXTCMD_FLASH_ERASE_TYPE));
+	if (type == NULL)
 		/* No sector present throw error */
 		return CBL_ERR_NEED_PARAM;
 
-	/* Convert sector to uint8_t */
-	sect = (uint8_t)strtoul(charSect, NULL, 10);
-
-	/* Check validity of given sector */
-	if (sect >= FLASH_SECTOR_TOTAL && sect != 64)
-	{
-		return CBL_ERR_INV_SECT;
-	}
-
 	/* Check the type of erase */
-	if (sect == 64)
-		settings.TypeErase = FLASH_TYPEERASE_MASSERASE;
-	else
+	if (strncmp(type, CBL_TXTCMD_FLASH_ERASE_TYPE_SECT, strlen(CBL_TXTCMD_FLASH_ERASE_TYPE_SECT)) == 0)
 	{
 		/* Set correct erase type */
 		settings.TypeErase = FLASH_TYPEERASE_SECTORS;
+
+		/* Get first sector to write to */
+		charSect = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_SECT,
+				strlen(CBL_TXTCMD_FLASH_ERASE_SECT));
+		if (charSect == NULL)
+			/* No sector present throw error */
+			return CBL_ERR_NEED_PARAM;
+
+		/* Convert sector to uint8_t */
+		sect = (uint8_t)strtoul(charSect, NULL, 10);
+
+		/* Check validity of given sector */
+		if (sect >= FLASH_SECTOR_TOTAL)
+		{
+			return CBL_ERR_INV_SECT;
+		}
 
 		/* Get how many sectors to erase */
 		charCount = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_COUNT,
@@ -953,14 +984,23 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 
 		if (sect + count - 1 >= FLASH_SECTOR_TOTAL)
 		{
-			/* Last sector to delete is too high throw error */
+			/* Last sector to delete doesn't exist, throw error */
 			return CBL_ERR_INV_SECT_COUNT;
 		}
 
 		settings.Sector = sect;
 		settings.NbSectors = count;
 	}
-
+	else if (strncmp(type, CBL_TXTCMD_FLASH_ERASE_TYPE_MASS, strlen(CBL_TXTCMD_FLASH_ERASE_TYPE_MASS)) == 0)
+	{
+		/* Erase all sectors */
+		settings.TypeErase = FLASH_TYPEERASE_MASSERASE;
+	}
+	else
+	{
+		/* Type has wrong value */
+		return CBL_ERR_ERASE_INV_TYPE;
+	}
 	/* Turn on the blue LED, signalizing flash manipulation */
 	LED_ON(BLUE);
 
@@ -979,11 +1019,11 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 	/* Check for errors */
 	if (HALCode != HAL_OK)
 		return CBL_ERR_HAL_ERASE;
-	if (sectorCode != 0xFFFFFFFFU) /* 0xFFFFFFFFU means success */
+	if (sectorCode != 0xFFFFFFFFU) /*!< 0xFFFFFFFFU means success */
 		return CBL_ERR_SECTOR;
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 
 	return eCode;
 }
@@ -991,24 +1031,22 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "";
 
 	DEBUG("Started\r\n");
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "";
 
 	DEBUG("Started\r\n");
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 
 	return eCode;
 }
@@ -1017,44 +1055,39 @@ static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p)
 static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "";
 
 	DEBUG("Started\r\n");
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "";
-
 	DEBUG("Started\r\n");
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "";
 
 	DEBUG("Started\r\n");
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
 static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char ready[] = CBL_TXTRESP_FLASH_WRITE_READY, bye[] = "Write successful\r\n",
-			buf[CBL_FLASH_WRITE_SZ] = { 0 }, *charStart, *charLen;
+	char buf[CBL_FLASH_WRITE_SZ] = { 0 }, *charStart, *charLen;
 	uint32_t start, len;
 	HAL_StatusTypeDef HALCode;
 
@@ -1090,7 +1123,7 @@ static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
 	cntrRecvChar = 0;
 
 	/* Notify host bootloader is ready to receive bytes */
-	cbl_SendToHost(ready, strlen(ready));
+	cbl_SendToHost(CBL_TXTRESP_FLASH_WRITE_READY, strlen(CBL_TXTRESP_FLASH_WRITE_READY));
 
 	/* Request 'len' bytes */
 	eCode = cbl_RecvFromHost(buf, len);
@@ -1102,6 +1135,7 @@ static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
 	}
 
 	/* Write data to flash */
+	LED_ON(BLUE);
 //	HAL_FLASH_Unlock();
 //	for (int i = 0; i < len; i++)
 //	{
@@ -1112,8 +1146,10 @@ static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
 //
 //	if (HALCode != HAL_OK)
 //		return CBL_ERR_HAL_WRITE;
+	LED_OFF(BLUE);
+
 	/* Send response */
-	eCode = cbl_SendToHost(bye, strlen(bye));
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
@@ -1125,5 +1161,7 @@ static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p)
 
 	isExitReq = true;
 
+	/* Send response */
+	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
