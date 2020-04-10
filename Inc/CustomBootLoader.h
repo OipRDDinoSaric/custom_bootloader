@@ -14,6 +14,8 @@
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
 #define CBL_ADDR_USERAPP 0x08008000UL /*!< Address of MSP of user application */
+#define CBL_FLASH_WRITE_SZ_TXT "1024" /*!< Size of a buffer used to write to flash as char array */
+#define CBL_FLASH_WRITE_SZ 1024 /*!< Size of a buffer used to write to flash */
 #define CBL_CMD_BUF_SZ 128 /*!< Size of a new command buffer */
 #define CBL_MAX_ARGS 8 /*!< Maximum number of arguments in an input cmd */
 
@@ -34,15 +36,20 @@
 #define CBL_TXTCMD_FLASH_ERASE "flash-erase"
 #define CBL_TXTCMD_EN_RW_PR "en-rw-protect" // TODO
 #define CBL_TXTCMD_DIS_RW_PR "dis-rw-protect" // TODO
+#define CBL_TXTCMD_READ_SECT_PROT_STAT "get-sect-prot" // TODO
 #define CBL_TXTCMD_MEM_READ "mem-read" // TODO
-#define CBL_TXTCMD_GET_SECT_STAT "get-sect-status" // TODO
 #define CBL_TXTCMD_OTP_READ "otp-read" // TODO
-#define CBL_TXTCMD_MEM_WRITE "mem-write" // TODO
+#define CBL_TXTCMD_FLASH_WRITE "flash-write" // TODO
 #define CBL_TXTCMD_EXIT "exit"
 
 #define CBL_TXTCMD_JUMP_TO_ADDR "addr"
 #define CBL_TXTCMD_FLASH_ERASE_SECT "sector"
 #define CBL_TXTCMD_FLASH_ERASE_COUNT "count"
+#define CBL_TXTCMD_FLASH_WRITE_START "start"
+#define CBL_TXTCMD_FLASH_WRITE_COUNT "count"
+
+#define CBL_TXTRESP_FLASH_WRITE_READY "\r\nready\r\n"
+#define CBL_TXTRESP_FLASH_WRITE_READY_HELP "\\r\\nready\\r\\n" /*!< Used in help function*/
 
 /* Missing address locations in stm32f407xx.h */
 #define SRAM1_END 0x2001BFFFUL
@@ -67,18 +74,21 @@ typedef enum CBL_ErrCode_e
 	CBL_ERR_READ_OF, /*!< Buffer overflowed while reading */
 	CBL_ERR_WRITE, /*!< Error while writing */
 	CBL_ERR_STATE, /*!< Unexpected state requested */
-	CBL_ERR_HAL_TX, /*!< Error happened in HAL library while transmiting */
+	CBL_ERR_HAL_TX, /*!< Error happened in HAL library while transmitting */
 	CBL_ERR_HAL_RX, /*!< Error happened in HAL library while receiving */
 	CBL_ERR_RX_ABORT, /*!< Error happened while aborting receive */
 	CBL_ERR_CMD_SHORT, /*!< Received command is of length 0 */
 	CBL_ERR_CMD_UNDEF, /*!< Received command is invalid */
 	CBL_ERR_CMDCD, /*!< Invalid command code enumerator */
 	CBL_ERR_NEED_PARAM, /*!< Called command is missing a parameter */
-	CBL_ERR_INV_ADDR, /*!< Given address is invalid */
+	CBL_ERR_JUMP_INV_ADDR, /*!< Given address is not jumpable */
 	CBL_ERR_HAL_ERASE, /*!< HAL error happened while erasing */
 	CBL_ERR_SECTOR, /*!< Error happened while erasing sector */
 	CBL_ERR_INV_SECT, /*!< Wrong sector number given */
 	CBL_ERR_INV_SECT_COUNT, /*!< Wrong sector count given */
+	CBL_ERR_WRITE_INV_ADDR, /*!< Given address can't be written to */
+	CBL_ERR_WRITE_TOO_BIG, /*!< Entered a too large size to write */
+	CBL_ERR_HAL_WRITE /*!< Error on HAL level while writing to flash */
 } CBL_ErrCode_t;
 
 typedef enum CBL_CmdArg_e
@@ -105,10 +115,10 @@ typedef enum CBL_CMD_e
 	CBL_CMD_FLASH_ERASE,
 	CBL_CMD_EN_RW_PR,
 	CBL_CMD_DIS_RW_PR,
+	CBL_CMD_READ_SECT_PROT_STAT,
 	CBL_CMD_MEM_READ,
-	CBL_CMD_GET_SECT_STAT,
 	CBL_CMD_OTP_READ,
-	CBL_CMD_MEM_WRITE,
+	CBL_CMD_FLASH_WRITE,
 	CBL_CMD_EXIT
 } CBL_CMD_t;
 

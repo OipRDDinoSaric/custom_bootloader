@@ -23,9 +23,9 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdEnRWPr(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdGetSectStat(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p);
 
 static uint32_t cntrRecvChar = 0;
@@ -43,7 +43,7 @@ static const char *cbl_supported_cmds =
 		"- " CBL_TXTCMD_GET_RDP_LVL " |  Read protection. Used to protect the software code stored in Flash memory."
 		" Ref. man. p. 93" CRLF CRLF
 		"- " CBL_TXTCMD_JUMP_TO " | Jumps to a requested address" CRLF
-		"    " CBL_TXTCMD_JUMP_TO_ADDR " - address to jump to in hex format (e.g. 0x12345678), 0x can be omitted. " CRLF CRLF
+		"    " CBL_TXTCMD_JUMP_TO_ADDR " - Address to jump to in hex format (e.g. 0x12345678), 0x can be omitted. " CRLF CRLF
 		"- " CBL_TXTCMD_FLASH_ERASE " | Erases flash memory" CRLF
 		"    " CBL_TXTCMD_FLASH_ERASE_SECT " - First sector to erase."
 		" If this value is 64 mass erase is conducted. Bootloader is on sectors 0 and 1." CRLF
@@ -54,12 +54,13 @@ static const char *cbl_supported_cmds =
 		"     " CRLF CRLF
 		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
 		"     " CRLF CRLF
-		"- " CBL_TXTCMD_GET_SECT_STAT " | TODO" CRLF
+		"- " CBL_TXTCMD_READ_SECT_PROT_STAT " | TODO" CRLF
 		"     " CRLF CRLF
 		"- " CBL_TXTCMD_OTP_READ " | TODO" CRLF
 		"     " CRLF CRLF
-		"- " CBL_TXTCMD_MEM_WRITE " | TODO" CRLF
-		"     " CRLF CRLF
+		"- " CBL_TXTCMD_FLASH_WRITE " | Writes to flash, returns " CBL_TXTRESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
+		"     " CBL_TXTCMD_FLASH_WRITE_START " - Starting address in hex format (e.g. 0x12345678), 0x can be omitted."CRLF
+		"     " CBL_TXTCMD_FLASH_WRITE_COUNT " - Number of bytes to write. Maximum bytes: " CBL_FLASH_WRITE_SZ_TXT CRLF CRLF
 		"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF;
 
 void CBL_Start()
@@ -432,20 +433,21 @@ static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 	{
 		*cmdCode = CBL_CMD_MEM_READ;
 	}
-	else if (len == strlen(CBL_TXTCMD_GET_SECT_STAT)
-			&& strncmp(buf, CBL_TXTCMD_GET_SECT_STAT, strlen(CBL_TXTCMD_GET_SECT_STAT)) == 0)
+	else if (len == strlen(CBL_TXTCMD_READ_SECT_PROT_STAT)
+			&& strncmp(buf, CBL_TXTCMD_READ_SECT_PROT_STAT, strlen(CBL_TXTCMD_READ_SECT_PROT_STAT))
+					== 0)
 	{
-		*cmdCode = CBL_CMD_GET_SECT_STAT;
+		*cmdCode = CBL_CMD_READ_SECT_PROT_STAT;
 	}
 	else if (len == strlen(CBL_TXTCMD_OTP_READ)
 			&& strncmp(buf, CBL_TXTCMD_OTP_READ, strlen(CBL_TXTCMD_OTP_READ)) == 0)
 	{
 		*cmdCode = CBL_CMD_OTP_READ;
 	}
-	else if (len == strlen(CBL_TXTCMD_MEM_WRITE)
-			&& strncmp(buf, CBL_TXTCMD_MEM_WRITE, strlen(CBL_TXTCMD_MEM_WRITE)) == 0)
+	else if (len == strlen(CBL_TXTCMD_FLASH_WRITE)
+			&& strncmp(buf, CBL_TXTCMD_FLASH_WRITE, strlen(CBL_TXTCMD_FLASH_WRITE)) == 0)
 	{
-		*cmdCode = CBL_CMD_MEM_WRITE;
+		*cmdCode = CBL_CMD_FLASH_WRITE;
 	}
 	else if (len == strlen(CBL_TXTCMD_EXIT)
 			&& strncmp(buf, CBL_TXTCMD_EXIT, strlen(CBL_TXTCMD_EXIT)) == 0)
@@ -509,9 +511,9 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 			eCode = cbl_HandleCmdMemRead(p);
 			break;
 		}
-		case CBL_CMD_GET_SECT_STAT:
+		case CBL_CMD_READ_SECT_PROT_STAT:
 		{
-			eCode = cbl_HandleCmdGetSectStat(p);
+			eCode = cbl_HandleCmdReadSectProtStat(p);
 			break;
 		}
 		case CBL_CMD_OTP_READ:
@@ -519,9 +521,9 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 			eCode = cbl_HandleCmdOTPRead(p);
 			break;
 		}
-		case CBL_CMD_MEM_WRITE:
+		case CBL_CMD_FLASH_WRITE:
 		{
-			eCode = cbl_HandleCmdMemWrite(p);
+			eCode = cbl_HandleCmdFlashWrite(p);
 			break;
 		}
 		case CBL_CMD_EXIT:
@@ -579,7 +581,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 {
 	DEBUG("Started\r\n");
 
-	/* Turn off all LED except red */
+	/* Turn off all LEDs except red */
 	LED_OFF(ORANGE);
 	LED_OFF(BLUE);
 	LED_OFF(GREEN);
@@ -651,13 +653,13 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			eCode = CBL_ERR_OK;
 			break;
 		}
-		case CBL_ERR_INV_ADDR:
+		case CBL_ERR_JUMP_INV_ADDR:
 		{
 			char msg[] =
 					"\r\nERROR: Invalid address\r\n"
 							"Jumpable regions: FLASH, SRAM1, SRAM2, CCMRAM, BKPSRAM, SYSMEM and EXTMEM (if connected)\r\n";
 
-			INFO("Invalid address inputed\r\n");
+			INFO("Invalid address inputed for jumping\r\n");
 			cbl_SendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
@@ -675,7 +677,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		{
 			char msg[] = "\r\nERROR: Wrong sector given\r\n";
 
-			WARNING("Wrong sector given\r\n");
+			INFO("Wrong sector given\r\n");
 			cbl_SendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
@@ -684,7 +686,34 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		{
 			char msg[] = "\r\nERROR: Wrong sector count given\r\n";
 
-			WARNING("Wrong sector count given\r\n");
+			INFO("Wrong sector count given\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_WRITE_INV_ADDR:
+		{
+			char msg[] = "\r\nERROR: Invalid address range entered\r\n";
+
+			INFO("Invalid address range entered for writing\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_WRITE_TOO_BIG:
+		{
+			char msg[] = "\r\nERROR: Inputed too big value\r\n";
+
+			INFO("User requested to write a too big chunk\r\n");
+			cbl_SendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_HAL_WRITE:
+		{
+			char msg[] = "\r\nERROR: Error while writing to flash\r\n";
+
+			INFO("Error while writing to flash on HAL level\r\n");
 			cbl_SendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
@@ -853,7 +882,7 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
  */
 static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr)
 {
-	CBL_ErrCode_t eCode = CBL_ERR_INV_ADDR;
+	CBL_ErrCode_t eCode = CBL_ERR_JUMP_INV_ADDR;
 
 	if (IS_FLASH_ADDRESS(addr) ||
 	IS_CCMDATARAM_ADDRESS(addr) ||
@@ -922,7 +951,6 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 		/* Convert sector count to uint8_t */
 		count = (uint8_t)strtoul(charCount, NULL, 10);
 
-
 		if (sect + count - 1 >= FLASH_SECTOR_TOTAL)
 		{
 			/* Last sector to delete is too high throw error */
@@ -981,10 +1009,12 @@ static CBL_ErrCode_t cbl_HandleCmdDisRWPr(CBL_Parser_t *p)
 
 	/* Send response */
 	eCode = cbl_SendToHost(buf, strlen(buf));
+
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
+/* Gets sector protection status, parameter sector is optional to read only one sector */
+static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char buf[32] = "";
@@ -996,7 +1026,7 @@ static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdGetSectStat(CBL_Parser_t *p)
+static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char buf[32] = "";
@@ -1020,15 +1050,70 @@ static CBL_ErrCode_t cbl_HandleCmdOTPRead(CBL_Parser_t *p)
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdMemWrite(CBL_Parser_t *p)
+static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[32] = "";
+	char ready[] = CBL_TXTRESP_FLASH_WRITE_READY, bye[] = "Write successful\r\n",
+			buf[CBL_FLASH_WRITE_SZ] = { 0 }, *charStart, *charLen;
+	uint32_t start, len;
+	HAL_StatusTypeDef HALCode;
 
 	DEBUG("Started\r\n");
 
+	/* Get starting address */
+	charStart = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_START,
+			strlen(CBL_TXTCMD_FLASH_WRITE_START));
+	if (charStart == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Get length in bytes */
+	charLen = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_COUNT,
+			strlen(CBL_TXTCMD_FLASH_WRITE_COUNT));
+	if (charLen == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Convert start address to uint32_t */
+	start = (uint32_t)strtoul(charStart, NULL, 16);
+
+	/* Convert length to uint32_t */
+	len = (uint32_t)strtoul(charLen, NULL, 10);
+
+	/* Check validity of input addresses */
+	if (IS_FLASH_ADDRESS(start) == false || IS_FLASH_ADDRESS(start + len) == false)
+		return CBL_ERR_WRITE_INV_ADDR;
+
+	/* Check if len is too big  */
+	if (len > CBL_FLASH_WRITE_SZ)
+		return CBL_ERR_WRITE_TOO_BIG;
+
+	/* Reset UART byte counter */
+	cntrRecvChar = 0;
+
+	/* Notify host bootloader is ready to receive bytes */
+	cbl_SendToHost(ready, strlen(ready));
+
+	/* Request 'len' bytes */
+	eCode = cbl_RecvFromHost(buf, len);
+	ERR_CHECK(eCode);
+
+	/* Wait for 'len' bytes */
+	while (cntrRecvChar != 1)
+	{
+	}
+
+	/* Write data to flash */
+//	HAL_FLASH_Unlock();
+//	for (int i = 0; i < len; i++)
+//	{
+//		/* Write a byte */
+//		HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i, buf[i]);
+//	}
+//	HAL_FLASH_Lock();
+//
+//	if (HALCode != HAL_OK)
+//		return CBL_ERR_HAL_WRITE;
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = cbl_SendToHost(bye, strlen(bye));
 	return eCode;
 }
 
