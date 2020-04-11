@@ -22,7 +22,6 @@ static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_ChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis);
 static CBL_ErrCode_t cmdHandle_MemRead(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_GetWriteProt(CBL_Parser_t *p);
-static CBL_ErrCode_t cmdHandle_GetOTPBytes(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_FlashWrite(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_Exit(CBL_Parser_t *p);
 static CBL_ErrCode_t str2ui32(const char *s, size_t len, out uint32_t *num, uint8_t base);
@@ -48,8 +47,6 @@ static char *helpPrintout =
 		"- " CBL_TXTCMD_CID " | Gets chip identification number" CRLF CRLF
 		"- " CBL_TXTCMD_GET_RDP_LVL " |  Read protection. Used to protect the software code stored in Flash memory."
 		" Ref. man. p. 93" CRLF CRLF
-		"- " CBL_TXTCMD_GET_OTP_BYTES " | TODO" CRLF
-		"     " CRLF CRLF
 		"- " CBL_TXTCMD_JUMP_TO " | Jumps to a requested address" CRLF
 		"    " CBL_TXTCMD_JUMP_TO_ADDR " - Address to jump to in hex format (e.g. 0x12345678), 0x can be omitted. " CRLF CRLF
 		"- " CBL_TXTCMD_FLASH_ERASE " | Erases flash memory" CRLF
@@ -60,8 +57,9 @@ static char *helpPrintout =
 		"- " CBL_TXTCMD_FLASH_WRITE " | Writes to flash, returns " CBL_TXTRESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
 		"     " CBL_TXTCMD_FLASH_WRITE_START " - Starting address in hex format (e.g. 0x12345678), 0x can be omitted."CRLF
 		"     " CBL_TXTCMD_FLASH_WRITE_COUNT " - Number of bytes to write. Maximum bytes: " CBL_FLASH_WRITE_SZ_TXT CRLF CRLF
-		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
-		"     " CRLF CRLF
+		"- " CBL_TXTCMD_MEM_READ " | Read bytes from memory" CRLF
+		"     " CBL_TXTCMD_FLASH_WRITE_START " - Starting address in hex format (e.g. 0x12345678), 0x can be omitted."CRLF
+		"     " CBL_TXTCMD_FLASH_WRITE_COUNT " - Number of bytes to read." CRLF CRLF
 		"- " CBL_TXTCMD_EN_WRITE_PROT " | Enables write protection per sector, as selected with \"" CBL_TXTCMD_EN_WRITE_PROT_MASK "\"." CRLF
 		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where LSB corresponds to sector 0." CRLF CRLF
 		"- " CBL_TXTCMD_DIS_WRITE_PROT " | Disables write protection on all sectors" CRLF
@@ -91,12 +89,11 @@ void CBL_Run()
 	if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
 	{
 		INFO("Blue button pressed...\r\n");
-//		eCode = cbl_runShellSystem(); TODO UNCOMMENT
 	}
 	else
 	{
 		INFO("Blue button not pressed...\r\n");
-		eCode = runShellSystem(); // TODO REMOVE
+		eCode = runShellSystem();
 	}
 	ASSERT(eCode == CBL_ERR_OK, "ErrCode=%d:Restart the application.\r\n", eCode);
 	runUserApp();
@@ -469,11 +466,6 @@ static CBL_ErrCode_t enumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 	{
 		*cmdCode = CBL_CMD_READ_SECT_PROT_STAT;
 	}
-	else if (len == strlen(CBL_TXTCMD_GET_OTP_BYTES)
-			&& strncmp(buf, CBL_TXTCMD_GET_OTP_BYTES, strlen(CBL_TXTCMD_GET_OTP_BYTES)) == 0)
-	{
-		*cmdCode = CBL_CMD_GET_OTP_BYTES;
-	}
 	else if (len == strlen(CBL_TXTCMD_FLASH_WRITE)
 			&& strncmp(buf, CBL_TXTCMD_FLASH_WRITE, strlen(CBL_TXTCMD_FLASH_WRITE)) == 0)
 	{
@@ -544,11 +536,6 @@ static CBL_ErrCode_t handleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 		case CBL_CMD_READ_SECT_PROT_STAT:
 		{
 			eCode = cmdHandle_GetWriteProt(p);
-			break;
-		}
-		case CBL_CMD_GET_OTP_BYTES:
-		{
-			eCode = cmdHandle_GetOTPBytes(p);
 			break;
 		}
 		case CBL_CMD_FLASH_WRITE:
@@ -916,22 +903,6 @@ static CBL_ErrCode_t cmdHandle_GetRDPLvl(CBL_Parser_t *p)
 	/* Send response */
 	eCode = sendToHost(buf, strlen(buf));
 
-	return eCode;
-}
-
-static CBL_ErrCode_t cmdHandle_GetOTPBytes(CBL_Parser_t *p)
-{
-	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	size_t len = FLASH_OTP_END - FLASH_OTP_BASE + 1;
-
-	DEBUG("Started\r\n");
-
-	/* Read len bytes from FLASH_OTP_BASE */
-
-	ERR_CHECK(eCode);
-
-	/* Send response */
-	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
@@ -1399,4 +1370,3 @@ static void ui2binstr(uint32_t num, out char *str, uint8_t numofbits)
 
 	*str = '\0';
 }
-

@@ -10,7 +10,7 @@
 #include "usart.h"
 #include "dma.h"
 
-#define CBL_VERSION "v0.5"
+#define CBL_VERSION "v0.9"
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
@@ -36,11 +36,10 @@
 #define CBL_TXTCMD_HELP "help"
 #define CBL_TXTCMD_CID "cid"
 #define CBL_TXTCMD_GET_RDP_LVL "get-rdp-level"
-#define CBL_TXTCMD_GET_OTP_BYTES "get-otp" // TODO
 #define CBL_TXTCMD_JUMP_TO "jump-to"
 #define CBL_TXTCMD_FLASH_ERASE "flash-erase"
 #define CBL_TXTCMD_FLASH_WRITE "flash-write"
-#define CBL_TXTCMD_MEM_READ "mem-read" // TODO
+#define CBL_TXTCMD_MEM_READ "mem-read"
 #define CBL_TXTCMD_EN_WRITE_PROT "en-write-prot"
 #define CBL_TXTCMD_DIS_WRITE_PROT "dis-write-prot"
 #define CBL_TXTCMD_READ_SECT_PROT_STAT "get-write-prot"
@@ -135,7 +134,6 @@ typedef enum CBL_CMD_e
 	CBL_CMD_DIS_WRITE_PROT,
 	CBL_CMD_READ_SECT_PROT_STAT,
 	CBL_CMD_MEM_READ,
-	CBL_CMD_GET_OTP_BYTES,
 	CBL_CMD_FLASH_WRITE,
 	CBL_CMD_EXIT
 } CBL_CMD_t;
