@@ -40,7 +40,7 @@ static char *helpPrintout =
 		"Custom STM32F4 bootloader shell by Dino Saric - " CBL_VERSION "*********" CRLF
 		"*************************************************************" CRLF CRLF
 		"*************************************************************" CRLF
-		"Examples*****************************************************" CRLF
+		"Commands*****************************************************" CRLF
 		"*************************************************************" CRLF CRLF
 		"Optional parameters are surrounded with [] " CRLF CRLF
 		"- " CBL_TXTCMD_VERSION " | Gets the current version of the running bootloader" CRLF CRLF
@@ -1297,7 +1297,7 @@ static CBL_ErrCode_t str2ui32(const char *s, size_t len, out uint32_t *num, uint
 	eCode = verifyDigitsOnly(s, len, base);
 	ERR_CHECK(eCode);
 
-	*num = (uint8_t)strtoul(s, NULL, base);
+	*num = strtoul(s, NULL, base);
 	return eCode;
 }
 
