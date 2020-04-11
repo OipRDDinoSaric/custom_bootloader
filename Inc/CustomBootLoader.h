@@ -37,23 +37,26 @@
 #define CBL_TXTCMD_GET_RDP_LVL "get-rdp-level"
 #define CBL_TXTCMD_JUMP_TO "jump-to"
 #define CBL_TXTCMD_FLASH_ERASE "flash-erase"
-#define CBL_TXTCMD_EN_RW_PR "en-rw-protect" // TODO
-#define CBL_TXTCMD_DIS_RW_PR "dis-rw-protect" // TODO
-#define CBL_TXTCMD_READ_SECT_PROT_STAT "get-sect-prot" // TODO
+#define CBL_TXTCMD_EN_WRITE_PROT "en-write-prot"
+#define CBL_TXTCMD_DIS_WRITE_PROT "dis-write-prot"
+#define CBL_TXTCMD_READ_SECT_PROT_STAT "get-write-prot"
 #define CBL_TXTCMD_MEM_READ "mem-read" // TODO
-#define CBL_TXTCMD_OTP_READ "otp-read" // TODO
+#define CBL_TXTCMD_GET_OTP_BYTES "get-otp" // TODO
 #define CBL_TXTCMD_FLASH_WRITE "flash-write"
 #define CBL_TXTCMD_EXIT "exit"
 
 #define CBL_TXTCMD_JUMP_TO_ADDR "addr"
-#define CBL_TXTCMD_FLASH_ERASE_SECT "sector"
-#define CBL_TXTCMD_FLASH_ERASE_COUNT "count"
+
 #define CBL_TXTCMD_FLASH_WRITE_START "start"
 #define CBL_TXTCMD_FLASH_WRITE_COUNT "count"
-#define CBL_TXTCMD_FLASH_ERASE_TYPE "type"
 
+#define CBL_TXTCMD_FLASH_ERASE_TYPE "type"
+#define CBL_TXTCMD_FLASH_ERASE_SECT "sector"
+#define CBL_TXTCMD_FLASH_ERASE_COUNT "count"
 #define CBL_TXTCMD_FLASH_ERASE_TYPE_MASS "mass"
 #define CBL_TXTCMD_FLASH_ERASE_TYPE_SECT "sector"
+
+#define CBL_TXTCMD_EN_WRITE_PROT_MASK "mask"
 
 #define CBL_TXTRESP_FLASH_WRITE_READY "\r\nready\r\n"
 #define CBL_TXTRESP_FLASH_WRITE_READY_HELP "\\r\\nready\\r\\n" /*!< Used in help function*/
@@ -97,6 +100,9 @@ typedef enum CBL_ErrCode_e
 	CBL_ERR_WRITE_TOO_BIG, /*!< Entered a too large size to write */
 	CBL_ERR_HAL_WRITE, /*!< Error on HAL level while writing to flash */
 	CBL_ERR_ERASE_INV_TYPE, /*!< Erase command has wrong erase type param */
+	CBL_ERR_RWP_INV_TYPE, /*!< Invalid type in enable rw protec. */
+	CBL_ERR_HAL_UNLOCK, /*!< Unlocking with HAL failed */
+	CBL_ERR_INV_PARAM /*!< Invalid function parameter */
 } CBL_ErrCode_t;
 
 typedef enum CBL_CmdArg_e
@@ -108,7 +114,7 @@ typedef struct CBL_Parser_s
 {
 	char *cmd; /*!< Command buffer */
 	size_t len; /*!< length of the whole cmd string */
-	char *args[CBL_MAX_ARGS][CBL_ARG_MAX]; /*!< Pointers to a buffers holding name and value of an argument */
+	char *args[CBL_MAX_ARGS][CBL_ARG_MAX]; /*!< Pointers to buffers holding name and value of an argument */
 	uint8_t numOfArgs;
 } CBL_Parser_t;
 
@@ -121,11 +127,11 @@ typedef enum CBL_CMD_e
 	CBL_CMD_GET_RDP_LVL,
 	CBL_CMD_JUMP_TO,
 	CBL_CMD_FLASH_ERASE,
-	CBL_CMD_EN_RW_PR,
-	CBL_CMD_DIS_RW_PR,
+	CBL_CMD_EN_WRITE_PROT,
+	CBL_CMD_DIS_WRITE_PROT,
 	CBL_CMD_READ_SECT_PROT_STAT,
 	CBL_CMD_MEM_READ,
-	CBL_CMD_OTP_READ,
+	CBL_CMD_GET_OTP_BYTES,
 	CBL_CMD_FLASH_WRITE,
 	CBL_CMD_EXIT
 } CBL_CMD_t;
