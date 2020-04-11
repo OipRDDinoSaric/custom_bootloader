@@ -48,6 +48,8 @@ static char *helpPrintout =
 		"- " CBL_TXTCMD_CID " | Gets chip identification number" CRLF CRLF
 		"- " CBL_TXTCMD_GET_RDP_LVL " |  Read protection. Used to protect the software code stored in Flash memory."
 		" Ref. man. p. 93" CRLF CRLF
+		"- " CBL_TXTCMD_GET_OTP_BYTES " | TODO" CRLF
+		"     " CRLF CRLF
 		"- " CBL_TXTCMD_JUMP_TO " | Jumps to a requested address" CRLF
 		"    " CBL_TXTCMD_JUMP_TO_ADDR " - Address to jump to in hex format (e.g. 0x12345678), 0x can be omitted. " CRLF CRLF
 		"- " CBL_TXTCMD_FLASH_ERASE " | Erases flash memory" CRLF
@@ -55,20 +57,17 @@ static char *helpPrintout =
 		"\"" CBL_TXTCMD_FLASH_ERASE_TYPE_SECT "\" erases only selected sectors." CRLF
 		"    " CBL_TXTCMD_FLASH_ERASE_SECT " - First sector to erase. Bootloader is on sectors 0 and 1. Not needed with mass erase." CRLF
 		"    " CBL_TXTCMD_FLASH_ERASE_COUNT " - Number of sectors to erase. Not needed with mass erase." CRLF CRLF
+		"- " CBL_TXTCMD_FLASH_WRITE " | Writes to flash, returns " CBL_TXTRESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
+		"     " CBL_TXTCMD_FLASH_WRITE_START " - Starting address in hex format (e.g. 0x12345678), 0x can be omitted."CRLF
+		"     " CBL_TXTCMD_FLASH_WRITE_COUNT " - Number of bytes to write. Maximum bytes: " CBL_FLASH_WRITE_SZ_TXT CRLF CRLF
+		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
+		"     " CRLF CRLF
 		"- " CBL_TXTCMD_EN_WRITE_PROT " | Enables write protection per sector, as selected with \"" CBL_TXTCMD_EN_WRITE_PROT_MASK "\"." CRLF
 		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where LSB corresponds to sector 0." CRLF CRLF
 		"- " CBL_TXTCMD_DIS_WRITE_PROT " | Disables write protection on all sectors" CRLF
 		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where LSB corresponds to sector 0." CRLF CRLF
-
 		"- " CBL_TXTCMD_READ_SECT_PROT_STAT " | Returns bit array of sector write protection. MSB corresponds to sector with highest number." CRLF
 		"     " CRLF CRLF
-		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
-		"     " CRLF CRLF
-		"- " CBL_TXTCMD_GET_OTP_BYTES " | TODO" CRLF
-		"     " CRLF CRLF
-		"- " CBL_TXTCMD_FLASH_WRITE " | Writes to flash, returns " CBL_TXTRESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
-		"     " CBL_TXTCMD_FLASH_WRITE_START " - Starting address in hex format (e.g. 0x12345678), 0x can be omitted."CRLF
-		"     " CBL_TXTCMD_FLASH_WRITE_COUNT " - Number of bytes to write. Maximum bytes: " CBL_FLASH_WRITE_SZ_TXT CRLF CRLF
 		"- "CBL_TXTCMD_EXIT " | Exits the bootloader and starts the user application" CRLF CRLF
 		"********************************************************" CRLF
 		"Examples************************************************" CRLF
@@ -958,9 +957,9 @@ static CBL_ErrCode_t cmdHandle_JumpTo(CBL_Parser_t *p)
 	eCode = verifyJumpAddress(addr);
 	ERR_CHECK(eCode);
 
-	/* Add one to the address to set the T bit */
+	/* Add 1 to the address to set the T bit */
 	addr++;
-	/**	T bit is 0th bit of a function address and tells the processor
+	/*!<	T bit is 0th bit of a function address and tells the processor
 	 *	if command is ARM T=0 or thumb T=1. STM uses thumb commands.
 	 *	@ref https://www.youtube.com/watch?v=VX_12SjnNhY */
 
@@ -1165,10 +1164,31 @@ static CBL_ErrCode_t cmdHandle_FlashWrite(CBL_Parser_t *p)
 static CBL_ErrCode_t cmdHandle_MemRead(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char *charStart, *charLen;
+	uint32_t start, len;
+
 	DEBUG("Started\r\n");
 
-	/* Send response */
-	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	/* Get starting address */
+	charStart = parser_GetVal(p, CBL_TXTCMD_FLASH_WRITE_START, strlen(CBL_TXTCMD_FLASH_WRITE_START));
+	if (charStart == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Get length in bytes */
+	charLen = parser_GetVal(p, CBL_TXTCMD_FLASH_WRITE_COUNT, strlen(CBL_TXTCMD_FLASH_WRITE_COUNT));
+	if (charLen == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Fill start */
+	eCode = str2ui32(charStart, strlen(charStart), &start, 16);
+	ERR_CHECK(eCode);
+
+	/* Fill len */
+	eCode = str2ui32(charLen, strlen(charLen), &len, 10);
+	ERR_CHECK(eCode);
+
+	/* Send requested bytes */
+	eCode = sendToHost((char *)start, len);
 	return eCode;
 }
 
