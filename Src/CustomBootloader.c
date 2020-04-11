@@ -21,9 +21,9 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr);
 static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis);
-static void cbl_ui16tobina(uint16_t num, out char *str);
+static void cbl_uitobina(uint32_t num, out char *str, uint8_t numofbits);
 static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p);
+static CBL_ErrCode_t cbl_HandleCmdGetWriteProt(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdGetOTPBytes(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p);
 static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p);
@@ -32,7 +32,7 @@ static uint32_t cntrRecvChar = 0;
 
 static bool isExitReq = false;
 
-static const char *cbl_supported_cmds =
+static char *cbl_supported_cmds =
 		"*************************************************************" CRLF
 		"*************************************************************" CRLF
 		"Custom STM32F4 bootloader shell by Dino Saric - " CBL_VERSION "*********" CRLF
@@ -54,12 +54,13 @@ static const char *cbl_supported_cmds =
 		"    " CBL_TXTCMD_FLASH_ERASE_SECT " - First sector to erase. Bootloader is on sectors 0 and 1. Not needed with mass erase." CRLF
 		"    " CBL_TXTCMD_FLASH_ERASE_COUNT " - Number of sectors to erase. Not needed with mass erase." CRLF CRLF
 		"- " CBL_TXTCMD_EN_WRITE_PROT " | Enables write protection per sector, as selected with \"" CBL_TXTCMD_EN_WRITE_PROT_MASK "\"." CRLF
-		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where MSB represents sector with higher number." CRLF CRLF
+		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where LSB corresponds to sector 0." CRLF CRLF
 		"- " CBL_TXTCMD_DIS_WRITE_PROT " | Disables write protection on all sectors" CRLF
-		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where MSB represents sector with higher number." CRLF CRLF
-		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
-		"     " CRLF CRLF
+		"     " CBL_TXTCMD_EN_WRITE_PROT_MASK " - Mask in hex form for sectors where LSB corresponds to sector 0." CRLF CRLF
+
 		"- " CBL_TXTCMD_READ_SECT_PROT_STAT " | Returns bit array of sector write protection. MSB corresponds to sector with highest number." CRLF
+		"     " CRLF CRLF
+		"- " CBL_TXTCMD_MEM_READ " | TODO" CRLF
 		"     " CRLF CRLF
 		"- " CBL_TXTCMD_GET_OTP_BYTES " | TODO" CRLF
 		"     " CRLF CRLF
@@ -164,7 +165,7 @@ static void cbl_RunUserApp(void)
 	DEBUG("MSP value: %#x\r\n", (unsigned int ) msp_value);
 	DEBUG("Reset handler address: %#x\r\n", (unsigned int ) addressRstHndl);
 
-	/* function from CMSIS */
+	/* Function from CMSIS */
 	__set_MSP(msp_value);
 
 	/* Give control to user application */
@@ -532,7 +533,7 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 		}
 		case CBL_CMD_READ_SECT_PROT_STAT:
 		{
-			eCode = cbl_HandleCmdReadSectProtStat(p);
+			eCode = cbl_HandleCmdGetWriteProt(p);
 			break;
 		}
 		case CBL_CMD_GET_OTP_BYTES:
@@ -1045,7 +1046,9 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 	/* Check for errors */
 	if (HALCode != HAL_OK)
 		return CBL_ERR_HAL_ERASE;
+
 	if (sectorCode != 0xFFFFFFFFU) /*!< 0xFFFFFFFFU means success */
+		/* Shouldn't happen as we check for HALCode before, but let's check */
 		return CBL_ERR_SECTOR;
 
 	/* Send response */
@@ -1083,9 +1086,6 @@ static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDi
 	/* Convert mask to uint32_t */
 	mask = (uint32_t)strtoul(charMask, NULL, 16); /*!< Mask is in hex */
 
-	/* Invert bits as nWRPi bits are inverted */
-	mask = ~mask;
-
 	/* Put non nWRP bits to 0 */
 	mask &= (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
 
@@ -1102,14 +1102,16 @@ static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDi
 	/* Want to edit WRP */
 	pOBInit.OptionType = OPTIONBYTE_WRP;
 
-		/* Write mask to nWRPi */
-		pOBInit.WRPSector = mask;
+	pOBInit.WRPSector = mask;
 
-	/* Setup write protection */
+	/* Setup kind of change */
 	pOBInit.WRPState = EnDis;
 
-	/* Run the change */
+	/* Write new RWP state in the option bytes register */
 	HAL_FLASHEx_OBProgram( &pOBInit);
+
+	/* Process the change */
+	HAL_FLASH_OB_Launch();
 
 	/* Lock option byte configuration */
 	HAL_FLASH_OB_Lock();
@@ -1119,13 +1121,15 @@ static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDi
 	return eCode;
 }
 
-/* Gets sector protection status, parameter sector is optional to read only one sector */
-static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p)
+/**
+ * @brief	Gets write protection status of all sectors in binary form
+ */
+static CBL_ErrCode_t cbl_HandleCmdGetWriteProt(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	FLASH_OBProgramInitTypeDef OBInit;
 	uint16_t invWRPSector;
-	char buf[19] = { 0 };
+	char buf[FLASH_SECTOR_TOTAL + 3] = { 0 };
 
 	DEBUG("Started\r\n");
 
@@ -1142,8 +1146,8 @@ static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p)
 	/* Invert WRPSector as we want 1 to represent protected */
 	invWRPSector = (uint16_t) ~OBInit.WRPSector & (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
 
-	/* Fill the buffer */
-	cbl_ui16tobina(invWRPSector, buf);
+	/* Fill the buffer with binary data */
+	cbl_uitobina(invWRPSector, buf, FLASH_SECTOR_TOTAL);
 
 	/* Send response */
 	eCode = cbl_SendToHost(buf, strlen(buf));
@@ -1151,16 +1155,17 @@ static CBL_ErrCode_t cbl_HandleCmdReadSectProtStat(CBL_Parser_t *p)
 }
 
 /**
- * @brief		Convert uint32_t to binary string
- * @param str	User must ensure str is atlest 19 bytes long (0b1111 1111 1111 1111)
+ * @brief			Convert uint32_t to binary string
+ * @param str		User must ensure it is at least 'numofbits' + 3 bytes long
+ * @param numofbits	Number of bits from num to convert to str
  */
-static void cbl_ui16tobina(uint16_t num, out char *str)
+static void cbl_uitobina(uint32_t num, out char *str, uint8_t numofbits)
 {
 	bool bit;
 	char i;
 
-	/* We have 16 bits to walk through */
-	i = 16;
+	/* Set num of bits to walk through */
+	i = numofbits;
 
 	*str++ = '0';
 	*str++ = 'b';
@@ -1259,17 +1264,24 @@ static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
 	LED_ON(BLUE);
 
 	/* Unlock flash */
-//	if (HAL_FLASH_Unlock() != HAL_OK)
-//		return CBL_ERR_HAL_UNLOCK;
-//	for (int i = 0; i < len; i++)
-//	{
-//		/* Write a byte */
-//		HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i, buf[i]);
-//	}
-//	HAL_FLASH_Lock();
-//
-//	if (HALCode != HAL_OK)
-	return CBL_ERR_HAL_WRITE; // todo fix put new enum
+	if (HAL_FLASH_Unlock() != HAL_OK)
+		return CBL_ERR_HAL_UNLOCK;
+
+	/* Write to flash */
+	for (int i = 0; i < len; i++)
+	{
+		/* Write a byte */
+		HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i, buf[i]);
+		if (HALCode != HAL_OK)
+		{
+			HAL_FLASH_Lock();
+			LED_OFF(BLUE);
+			return CBL_ERR_HAL_WRITE;
+		}
+	}
+
+	HAL_FLASH_Lock();
+
 	LED_OFF(BLUE);
 
 	/* Send response */

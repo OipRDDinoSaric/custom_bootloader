@@ -13,7 +13,7 @@
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
-#define CBL_ADDR_USERAPP 0x08008000UL /*!< Address of MSP of user application */
+#define CBL_ADDR_USERAPP 0x0800C000UL /*!< Address of MSP of user application */
 #define CBL_FLASH_WRITE_SZ_TXT "1024" /*!< Size of a buffer used to write to flash as char array */
 #define CBL_FLASH_WRITE_SZ 1024 /*!< Size of a buffer used to write to flash */
 #define CBL_CMD_BUF_SZ 128 /*!< Size of a new command buffer */

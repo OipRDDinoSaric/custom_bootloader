@@ -24,7 +24,8 @@
 #define __MAIN_H
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 /* Includes ------------------------------------------------------------------*/
@@ -42,6 +43,7 @@ extern "C" {
 #else
 #define LOG_EN false /*!< if build is running as Release disable logging */
 #endif
+
 #if LOG_EN == true
 /**
  * Tutorial for semihosting to Console:

@@ -63,7 +63,7 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
 CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 32K /* Was 1024K, but we allow bootloader only first 2 sectors (32K) */
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 48K /* Allow bootloader only first 3 sectors */
 }
 
 /* Define output sections */
