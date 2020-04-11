@@ -18,15 +18,17 @@ static CBL_ErrCode_t cmdHandle_Help(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_Cid(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_GetRDPLvl(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_JumpTo(CBL_Parser_t *p);
-static CBL_ErrCode_t verifyJumpAddress(uint32_t addr);
 static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_ChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis);
-static void uitobina(uint32_t num, out char *str, uint8_t numofbits);
 static CBL_ErrCode_t cmdHandle_MemRead(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_GetWriteProt(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_GetOTPBytes(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_FlashWrite(CBL_Parser_t *p);
 static CBL_ErrCode_t cmdHandle_Exit(CBL_Parser_t *p);
+static CBL_ErrCode_t str2ui32(const char *s, size_t len, out uint32_t *num, uint8_t base);
+static CBL_ErrCode_t verifyDigitsOnly(const char *s, size_t i, uint8_t base);
+static CBL_ErrCode_t verifyJumpAddress(uint32_t addr);
+static void ui2binstr(uint32_t num, out char *str, uint8_t numofbits);
 
 static uint32_t gRxCmdCntr = 0;
 
@@ -124,7 +126,7 @@ static void shellInit(void)
 	MX_USART2_UART_Init();
 	sendToHost(bufWelcome, strlen(bufWelcome));
 
-	UNUSED(&stopRecvFromHost);
+	UNUSED( &stopRecvFromHost);
 
 	/* Bootloader started turn on red LED */
 	LED_ON(RED);
@@ -333,8 +335,8 @@ static CBL_ErrCode_t waitForCmd(out char* buf, size_t len)
  * @brief		Parses a command into CBL_Parser_t. Command's form is as follows:
  * 				somecmd pname1=pval1 pname2=pval2
  * @note		This function is destructive to input cmd, as it replaces all ' ' and '='
- * 				with '\0'
- * @param cmd	NULL terminated string containing command without \r\n
+ * 				with '\0' and transform all to lower case
+ * @param cmd	NULL terminated string containing command without \r\n, parser changes it to lower case
  * @param len	length of string contained in cmd
  * @param p		Function assumes empty parser p on entrance
  * @return
@@ -776,10 +778,29 @@ static CBL_ErrCode_t sysState_Error(CBL_ErrCode_t eCode)
 		}
 		case CBL_ERR_INV_PARAM:
 		{
+			ERROR("Wrong parameter sent to a function\r\n");
 			eCode = CBL_ERR_OK;
 			break;
 		}
+		case CBL_ERR_NOT_DIG:
+		{
+			char msg[] = "\r\nERROR: Number parameter contains letters\r\n";
 
+			WARNING("User entered number parameter containing letters\r\n");
+			sendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
+		case CBL_ERR_1ST_NOT_ZERO:
+		{
+			char msg[] =
+					"\r\nERROR: Number parameter must have '0' at the start when 'x' is present\r\n";
+
+			WARNING("User entered number parameter with 'x', but not '0' on index 0\r\n");
+			sendToHost(msg, strlen(msg));
+			eCode = CBL_ERR_OK;
+			break;
+		}
 		default:
 		{
 			ERROR("Unhandled error happened\r\n");
@@ -925,12 +946,13 @@ static CBL_ErrCode_t cmdHandle_JumpTo(CBL_Parser_t *p)
 	DEBUG("Started\r\n");
 
 	/* Get the address in hex form */
-	charAddr = parserGetArgVal(p, CBL_TXTCMD_JUMP_TO_ADDR, strlen(CBL_TXTCMD_JUMP_TO_ADDR));
+	charAddr = parser_GetVal(p, CBL_TXTCMD_JUMP_TO_ADDR, strlen(CBL_TXTCMD_JUMP_TO_ADDR));
 	if (charAddr == NULL)
 		return CBL_ERR_NEED_PARAM;
 
-	/* Cast the address to uint32_t, skips 0x if present */
-	addr = (uint32_t)strtoul(charAddr, NULL, 16);
+	/* Fill addr, skips 0x if present */
+	eCode = str2ui32(charAddr, strlen(charAddr), &addr, 16);
+	ERR_CHECK(eCode);
 
 	/* Make sure we can jump to the wanted location */
 	eCode = verifyJumpAddress(addr);
@@ -954,7 +976,6 @@ static CBL_ErrCode_t cmdHandle_JumpTo(CBL_Parser_t *p)
 	return eCode;
 }
 
-
 /**
  * @note	Sending sect=64 erases whole flash
  */
@@ -962,9 +983,8 @@ static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char *charSect, *charCount, *type;
-	uint8_t sect, count;
 	HAL_StatusTypeDef HALCode;
-	uint32_t sectorCode;
+	uint32_t sectorCode, sect, count;
 	FLASH_EraseInitTypeDef settings;
 
 	DEBUG("Started\r\n");
@@ -987,14 +1007,14 @@ static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p)
 		settings.TypeErase = FLASH_TYPEERASE_SECTORS;
 
 		/* Get first sector to write to */
-		charSect = parserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_SECT,
-				strlen(CBL_TXTCMD_FLASH_ERASE_SECT));
+		charSect = parser_GetVal(p, CBL_TXTCMD_FLASH_ERASE_SECT, strlen(CBL_TXTCMD_FLASH_ERASE_SECT));
 		if (charSect == NULL)
 			/* No sector present throw error */
 			return CBL_ERR_NEED_PARAM;
 
-		/* Convert sector to uint8_t */
-		sect = (uint8_t)strtoul(charSect, NULL, 10);
+		/* Fill sect */
+		eCode = str2ui32(charSect, strlen(charSect), &sect, 10);
+		ERR_CHECK(eCode);
 
 		/* Check validity of given sector */
 		if (sect >= FLASH_SECTOR_TOTAL)
@@ -1003,14 +1023,15 @@ static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p)
 		}
 
 		/* Get how many sectors to erase */
-		charCount = parserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_COUNT,
+		charCount = parser_GetVal(p, CBL_TXTCMD_FLASH_ERASE_COUNT,
 				strlen(CBL_TXTCMD_FLASH_ERASE_COUNT));
 		if (charCount == NULL)
 			/* No sector count present throw error */
 			return CBL_ERR_NEED_PARAM;
 
-		/* Convert sector count to uint8_t */
-		count = (uint8_t)strtoul(charCount, NULL, 10);
+		/* Fill count */
+		eCode = str2ui32(charCount, strlen(charCount), &count, 10);
+		ERR_CHECK(eCode);
 
 		if (sect + count - 1 >= FLASH_SECTOR_TOTAL)
 		{
@@ -1072,22 +1093,22 @@ static CBL_ErrCode_t cmdHandle_FlashWrite(CBL_Parser_t *p)
 	DEBUG("Started\r\n");
 
 	/* Get starting address */
-	charStart = parserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_START,
-			strlen(CBL_TXTCMD_FLASH_WRITE_START));
+	charStart = parser_GetVal(p, CBL_TXTCMD_FLASH_WRITE_START, strlen(CBL_TXTCMD_FLASH_WRITE_START));
 	if (charStart == NULL)
 		return CBL_ERR_NEED_PARAM;
 
 	/* Get length in bytes */
-	charLen = parserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_COUNT,
-			strlen(CBL_TXTCMD_FLASH_WRITE_COUNT));
+	charLen = parser_GetVal(p, CBL_TXTCMD_FLASH_WRITE_COUNT, strlen(CBL_TXTCMD_FLASH_WRITE_COUNT));
 	if (charLen == NULL)
 		return CBL_ERR_NEED_PARAM;
 
-	/* Convert start address to uint32_t */
-	start = (uint32_t)strtoul(charStart, NULL, 16);
+	/* Fill start */
+	eCode = str2ui32(charStart, strlen(charStart), &start, 16);
+	ERR_CHECK(eCode);
 
-	/* Convert length to uint32_t */
-	len = (uint32_t)strtoul(charLen, NULL, 10);
+	/* Fill len */
+	eCode = str2ui32(charLen, strlen(charLen), &len, 10);
+	ERR_CHECK(eCode);
 
 	/* Check validity of input addresses */
 	if (IS_FLASH_ADDRESS(start) == false || IS_FLASH_ADDRESS(start + len) == false)
@@ -1167,19 +1188,18 @@ static CBL_ErrCode_t cmdHandle_ChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis)
 	/* Assert parameter */
 	if (EnDis != OB_WRPSTATE_ENABLE && EnDis != OB_WRPSTATE_DISABLE)
 	{
-		ERROR("Wrong parameter sent to function\r\n");
 		return CBL_ERR_INV_PARAM;
 	}
 
 	/* Mask of sectors to affect */
-	charMask = parserGetArgVal(p, CBL_TXTCMD_EN_WRITE_PROT_MASK,
-			strlen(CBL_TXTCMD_EN_WRITE_PROT_MASK));
+	charMask = parser_GetVal(p, CBL_TXTCMD_EN_WRITE_PROT_MASK, strlen(CBL_TXTCMD_EN_WRITE_PROT_MASK));
 
 	if (charMask == NULL)
 		return CBL_ERR_NEED_PARAM;
 
-	/* Convert mask to uint32_t */
-	mask = (uint32_t)strtoul(charMask, NULL, 16); /*!< Mask is in hex */
+	/* Fill mask */
+	eCode = str2ui32(charMask, strlen(charMask), &mask, 16); /*!< Mask is in hex */
+	ERR_CHECK(eCode);
 
 	/* Put non nWRP bits to 0 */
 	mask &= (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
@@ -1242,7 +1262,7 @@ static CBL_ErrCode_t cmdHandle_GetWriteProt(CBL_Parser_t *p)
 	invWRPSector = (uint16_t) ~OBInit.WRPSector & (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
 
 	/* Fill the buffer with binary data */
-	uitobina(invWRPSector, buf, FLASH_SECTOR_TOTAL);
+	ui2binstr(invWRPSector, buf, FLASH_SECTOR_TOTAL);
 
 	/* Send response */
 	eCode = sendToHost(buf, strlen(buf));
@@ -1260,6 +1280,53 @@ static CBL_ErrCode_t cmdHandle_Exit(CBL_Parser_t *p)
 	/* Send response */
 	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
+}
+
+/**
+ * @brief		Converts string containing only number (e.g. 0A3F or 0x0A3F) to uint32_t
+ *
+ * @param s		String to convert
+ * @param len	Length of s
+ * @param num	Output number
+ * @param base	Base of digits string is written into, supported 10 or 16 only
+ */
+static CBL_ErrCode_t str2ui32(const char *s, size_t len, out uint32_t *num, uint8_t base)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	eCode = verifyDigitsOnly(s, len, base);
+	ERR_CHECK(eCode);
+
+	*num = (uint8_t)strtoul(s, NULL, base);
+	return eCode;
+}
+
+static CBL_ErrCode_t verifyDigitsOnly(const char *s, size_t len, uint8_t base)
+{
+	size_t i = len;
+
+	/* If base is 16, index 1 'x' or 'X' then index 0 must be '0' */
+	if (base == 16 && (tolower(s[1]) == 'x') && s[0] != '0')
+		return CBL_ERR_1ST_NOT_ZERO;
+
+	while (i)
+	{
+		i--;
+		if (base == 10)
+		{
+			if (isdigit(s[--i]) == 0)
+				return CBL_ERR_NOT_DIG;
+		}
+		else if (base == 16)
+		{
+			/* Index 1 can be a number or 'x' or 'X', other just number */
+			if ( (i != 1 || (tolower(s[i]) != 'x')) && isxdigit(s[i]) == 0)
+				return CBL_ERR_NOT_DIG;
+		}
+		else
+			return CBL_ERR_UNSUP_BASE;
+	}
+	return CBL_ERR_OK;
 }
 
 /**
@@ -1288,7 +1355,7 @@ static CBL_ErrCode_t verifyJumpAddress(uint32_t addr)
  * @param str		User must ensure it is at least 'numofbits' + 3 bytes long
  * @param numofbits	Number of bits from num to convert to str
  */
-static void uitobina(uint32_t num, out char *str, uint8_t numofbits)
+static void ui2binstr(uint32_t num, out char *str, uint8_t numofbits)
 {
 	bool bit;
 	char i;

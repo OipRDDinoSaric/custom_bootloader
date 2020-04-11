@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include "usart.h"
 #include "dma.h"
 
@@ -102,7 +103,10 @@ typedef enum CBL_ErrCode_e
 	CBL_ERR_ERASE_INV_TYPE, /*!< Erase command has wrong erase type param */
 	CBL_ERR_RWP_INV_TYPE, /*!< Invalid type in enable rw protec. */
 	CBL_ERR_HAL_UNLOCK, /*!< Unlocking with HAL failed */
-	CBL_ERR_INV_PARAM /*!< Invalid function parameter */
+	CBL_ERR_INV_PARAM, /*!< Invalid function parameter */
+	CBL_ERR_NOT_DIG, /*!< String contains non digit characters  */
+	CBL_ERR_UNSUP_BASE, /*!< Unsupported number base */
+	CBL_ERR_1ST_NOT_ZERO /*!< First char must be '0' */
 } CBL_ErrCode_t;
 
 typedef enum CBL_CmdArg_e
@@ -143,6 +147,6 @@ typedef enum CBL_ShellStates_e
 	CBL_STAT_EXIT /*!< Deconstructor state */
 } CBL_sysStates_t;
 
-void CBL_Start(void);
+void CBL_Run(void);
 
 #endif /* __CBL_H */
