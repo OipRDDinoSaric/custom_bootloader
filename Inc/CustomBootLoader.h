@@ -9,7 +9,7 @@
 #include "usart.h"
 #include "dma.h"
 
-#define CBL_VERSION "v0.2"
+#define CBL_VERSION "v0.5"
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
