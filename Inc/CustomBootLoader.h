@@ -35,14 +35,14 @@
 #define CBL_TXTCMD_HELP "help"
 #define CBL_TXTCMD_CID "cid"
 #define CBL_TXTCMD_GET_RDP_LVL "get-rdp-level"
+#define CBL_TXTCMD_GET_OTP_BYTES "get-otp" // TODO
 #define CBL_TXTCMD_JUMP_TO "jump-to"
 #define CBL_TXTCMD_FLASH_ERASE "flash-erase"
+#define CBL_TXTCMD_FLASH_WRITE "flash-write"
+#define CBL_TXTCMD_MEM_READ "mem-read" // TODO
 #define CBL_TXTCMD_EN_WRITE_PROT "en-write-prot"
 #define CBL_TXTCMD_DIS_WRITE_PROT "dis-write-prot"
 #define CBL_TXTCMD_READ_SECT_PROT_STAT "get-write-prot"
-#define CBL_TXTCMD_MEM_READ "mem-read" // TODO
-#define CBL_TXTCMD_GET_OTP_BYTES "get-otp" // TODO
-#define CBL_TXTCMD_FLASH_WRITE "flash-write"
 #define CBL_TXTCMD_EXIT "exit"
 
 #define CBL_TXTCMD_JUMP_TO_ADDR "addr"

@@ -1,38 +1,38 @@
 #include "CustomBootLoader.h"
 
-static void cbl_ShellInit(void);
-static void cbl_RunUserApp(void);
-static CBL_ErrCode_t cbl_RunShellSystem(void);
-static CBL_ErrCode_t cbl_StateOperation(void);
-static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len);
-static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p);
-static char *cbl_ParserGetArgVal(CBL_Parser_t *p, char * name, size_t lenName);
-static CBL_ErrCode_t cbl_EnumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
-static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p);
-static CBL_ErrCode_t cbl_SendToHost(const char *buf, size_t len);
-static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len);
-//static CBL_Err_Code_t cbl_StopRecvFromHost();
-static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode);
-static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdGetRDPLvl(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr);
-static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis);
-static void cbl_uitobina(uint32_t num, out char *str, uint8_t numofbits);
-static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdGetWriteProt(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdGetOTPBytes(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p);
-static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p);
+static void shellInit(void);
+static void runUserApp(void);
+static CBL_ErrCode_t runShellSystem(void);
+static CBL_ErrCode_t sysState_Operation(void);
+static CBL_ErrCode_t waitForCmd(out char* buf, size_t len);
+static CBL_ErrCode_t parser_Run(char *cmd, size_t len, out CBL_Parser_t *p);
+static char *parser_GetVal(CBL_Parser_t *p, char * name, size_t lenName);
+static CBL_ErrCode_t enumCmd(out char* buf, size_t len, out CBL_CMD_t *cmdCode);
+static CBL_ErrCode_t handleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p);
+static CBL_ErrCode_t sendToHost(const char *buf, size_t len);
+static CBL_ErrCode_t recvFromHost(out char *buf, size_t len);
+static CBL_ErrCode_t stopRecvFromHost(void);
+static CBL_ErrCode_t sysState_Error(CBL_ErrCode_t eCode);
+static CBL_ErrCode_t cmdHandle_Version(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_Help(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_Cid(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_GetRDPLvl(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_JumpTo(CBL_Parser_t *p);
+static CBL_ErrCode_t verifyJumpAddress(uint32_t addr);
+static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_ChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis);
+static void uitobina(uint32_t num, out char *str, uint8_t numofbits);
+static CBL_ErrCode_t cmdHandle_MemRead(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_GetWriteProt(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_GetOTPBytes(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_FlashWrite(CBL_Parser_t *p);
+static CBL_ErrCode_t cmdHandle_Exit(CBL_Parser_t *p);
 
-static uint32_t cntrRecvChar = 0;
+static uint32_t gRxCmdCntr = 0;
 
 static bool isExitReq = false;
 
-static char *cbl_supported_cmds =
+static char *helpPrintout =
 		"*************************************************************" CRLF
 		"*************************************************************" CRLF
 		"Custom STM32F4 bootloader shell by Dino Saric - " CBL_VERSION "*********" CRLF
@@ -83,7 +83,7 @@ static char *cbl_supported_cmds =
 		"STM32 returns: " CBL_TXT_SUCCESS_HELP CRLF CRLF
 		"********************************************************" CRLF
 		"********************************************************" CRLF CRLF;
-void CBL_Start()
+void CBL_Run()
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	INFO("Custom bootloader started\r\n");
@@ -95,14 +95,14 @@ void CBL_Start()
 	else
 	{
 		INFO("Blue button not pressed...\r\n");
-		eCode = cbl_RunShellSystem(); // TODO REMOVE
+		eCode = runShellSystem(); // TODO REMOVE
 	}
 	ASSERT(eCode == CBL_ERR_OK, "ErrCode=%d:Restart the application.\r\n", eCode);
-	cbl_RunUserApp();
+	runUserApp();
 	ERROR("Switching to user application failed\r\n");
 }
 
-static void cbl_ShellInit(void)
+static void shellInit(void)
 {
 	char bufWelcome[] = ""
 			"\r\n*********************************************\r\n"
@@ -122,7 +122,9 @@ static void cbl_ShellInit(void)
 	"*********************************************\r\n";
 	MX_DMA_Init();
 	MX_USART2_UART_Init();
-	cbl_SendToHost(bufWelcome, strlen(bufWelcome));
+	sendToHost(bufWelcome, strlen(bufWelcome));
+
+	UNUSED(&stopRecvFromHost);
 
 	/* Bootloader started turn on red LED */
 	LED_ON(RED);
@@ -146,7 +148,7 @@ static void cbl_ShellInit(void)
  *
  * @return	Procesor never returns from this application
  */
-static void cbl_RunUserApp(void)
+static void runUserApp(void)
 {
 	void (*userAppResetHandler)(void);
 	uint32_t addressRstHndl;
@@ -155,7 +157,7 @@ static void cbl_RunUserApp(void)
 	char userAppHello[] = "Jumping to user application :)\r\n";
 
 	/* Send hello message to user and debug output */
-	cbl_SendToHost(userAppHello, strlen(userAppHello));
+	sendToHost(userAppHello, strlen(userAppHello));
 	INFO("%s", userAppHello);
 
 	addressRstHndl = *(volatile uint32_t *) (CBL_ADDR_USERAPP + 4);
@@ -177,7 +179,7 @@ static void cbl_RunUserApp(void)
  * @brief	Runs the shell for the bootloader.
  * @return	CBL_ERR_NO when no error, else returns an error code.
  */
-static CBL_ErrCode_t cbl_RunShellSystem(void)
+static CBL_ErrCode_t runShellSystem(void)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	bool isExitNeeded = false;
@@ -187,7 +189,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 
 	nextState = state;
 
-	cbl_ShellInit();
+	shellInit();
 
 	while (isExitNeeded == false)
 	{
@@ -195,7 +197,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 		{
 			case CBL_STAT_OPER:
 			{
-				eCode = cbl_StateOperation();
+				eCode = sysState_Operation();
 
 				/* Switch state if needed */
 				if (eCode != CBL_ERR_OK)
@@ -210,7 +212,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 			}
 			case CBL_STAT_ERR:
 			{
-				eCode = cbl_StateError(eCode);
+				eCode = sysState_Error(eCode);
 
 				/* Switch state */
 				if (eCode != CBL_ERR_OK)
@@ -229,7 +231,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 				char bye[] = "Exiting shell :(\r\n\r\n";
 
 				INFO(bye);
-				cbl_SendToHost(bye, strlen(bye));
+				sendToHost(bye, strlen(bye));
 
 				isExitNeeded = true;
 
@@ -249,7 +251,7 @@ static CBL_ErrCode_t cbl_RunShellSystem(void)
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_StateOperation(void)
+static CBL_ErrCode_t sysState_Operation(void)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	CBL_CMD_t cmdCode = CBL_CMD_UNDEF;
@@ -257,43 +259,43 @@ static CBL_ErrCode_t cbl_StateOperation(void)
 	char cmd[CBL_CMD_BUF_SZ] = { 0 };
 
 	LED_ON(GREEN);
-	eCode = cbl_WaitForCmd(cmd, CBL_CMD_BUF_SZ);
+	eCode = waitForCmd(cmd, CBL_CMD_BUF_SZ);
 	ERR_CHECK(eCode);
 	LED_OFF(GREEN);
 
 	/* Command processing, turn on orange LED */
 	LED_ON(ORANGE);
-	eCode = cbl_ParseCmd(cmd, strlen(cmd), &parser);
+	eCode = parser_Run(cmd, strlen(cmd), &parser);
 	ERR_CHECK(eCode);
 
-	eCode = cbl_EnumCmd(parser.cmd, strlen(cmd), &cmdCode);
+	eCode = enumCmd(parser.cmd, strlen(cmd), &cmdCode);
 	ERR_CHECK(eCode);
 
-	eCode = cbl_HandleCmd(cmdCode, &parser);
+	eCode = handleCmd(cmdCode, &parser);
 	/* Command processing success, turn off orange LED */
 	LED_OFF(ORANGE);
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len)
+static CBL_ErrCode_t waitForCmd(out char* buf, size_t len)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	bool isLastCharCR = false, isOverflow = true;
 	uint32_t i = 0;
-	cntrRecvChar = 0;
+	gRxCmdCntr = 0;
 
-	eCode = cbl_SendToHost("\r\n> ", 4);
+	eCode = sendToHost("\r\n> ", 4);
 	ERR_CHECK(eCode);
 
 	/* Read until CRLF or until full DMA*/
-	while (cntrRecvChar < len)
+	while (gRxCmdCntr < len)
 	{
 		/* Receive one char from host */
-		eCode = cbl_RecvFromHost(buf + i, 1);
+		eCode = recvFromHost(buf + i, 1);
 		ERR_CHECK(eCode);
 
 		/* Wait for a new char */
-		while (i != (cntrRecvChar - 1))
+		while (i != (gRxCmdCntr - 1))
 		{
 		}
 
@@ -337,7 +339,7 @@ static CBL_ErrCode_t cbl_WaitForCmd(out char* buf, size_t len)
  * @param p		Function assumes empty parser p on entrance
  * @return
  */
-static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
+static CBL_ErrCode_t parser_Run(char *cmd, size_t len, out CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char *pSpa = NULL, *pEqu = NULL, *pLastChar = &cmd[len];
@@ -382,7 +384,14 @@ static CBL_ErrCode_t cbl_ParseCmd(char *cmd, size_t len, out CBL_Parser_t *p)
 	return eCode;
 }
 
-static char *cbl_ParserGetArgVal(CBL_Parser_t *p, char * name, size_t lenName)
+/**
+ * @brief			Gets value from a parameter
+ * @param p			parser
+ * @param name		Name of a parameter
+ * @param lenName	Name length
+ * @return	Pointer to the value
+ */
+static char *parser_GetVal(CBL_Parser_t *p, char * name, size_t lenName)
 {
 	size_t lenArgName;
 
@@ -401,7 +410,7 @@ static char *cbl_ParserGetArgVal(CBL_Parser_t *p, char * name, size_t lenName)
 	return NULL;
 }
 
-static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
+static CBL_ErrCode_t enumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	if (len == 0)
@@ -480,7 +489,7 @@ static CBL_ErrCode_t cbl_EnumCmd(char* buf, size_t len, out CBL_CMD_t *cmdCode)
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
+static CBL_ErrCode_t handleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
@@ -488,67 +497,67 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 	{
 		case CBL_CMD_VERSION:
 		{
-			eCode = cbl_HandleCmdVersion(p);
+			eCode = cmdHandle_Version(p);
 			break;
 		}
 		case CBL_CMD_HELP:
 		{
-			eCode = cbl_HandleCmdHelp(p);
+			eCode = cmdHandle_Help(p);
 			break;
 		}
 		case CBL_CMD_CID:
 		{
-			eCode = cbl_HandleCmdCid(p);
+			eCode = cmdHandle_Cid(p);
 			break;
 		}
 		case CBL_CMD_GET_RDP_LVL:
 		{
-			eCode = cbl_HandleCmdGetRDPLvl(p);
+			eCode = cmdHandle_GetRDPLvl(p);
 			break;
 		}
 		case CBL_CMD_JUMP_TO:
 		{
-			eCode = cbl_HandleCmdJumpTo(p);
+			eCode = cmdHandle_JumpTo(p);
 			break;
 		}
 		case CBL_CMD_FLASH_ERASE:
 		{
-			eCode = cbl_HandleCmdFlashErase(p);
+			eCode = cmdHandle_FlashErase(p);
 			break;
 		}
 		case CBL_CMD_EN_WRITE_PROT:
 		{
-			eCode = cbl_HandleCmdChangeWriteProt(p, OB_WRPSTATE_ENABLE);
+			eCode = cmdHandle_ChangeWriteProt(p, OB_WRPSTATE_ENABLE);
 			break;
 		}
 		case CBL_CMD_DIS_WRITE_PROT:
 		{
-			eCode = cbl_HandleCmdChangeWriteProt(p, OB_WRPSTATE_DISABLE);
+			eCode = cmdHandle_ChangeWriteProt(p, OB_WRPSTATE_DISABLE);
 			break;
 		}
 		case CBL_CMD_MEM_READ:
 		{
-			eCode = cbl_HandleCmdMemRead(p);
+			eCode = cmdHandle_MemRead(p);
 			break;
 		}
 		case CBL_CMD_READ_SECT_PROT_STAT:
 		{
-			eCode = cbl_HandleCmdGetWriteProt(p);
+			eCode = cmdHandle_GetWriteProt(p);
 			break;
 		}
 		case CBL_CMD_GET_OTP_BYTES:
 		{
-			eCode = cbl_HandleCmdGetOTPBytes(p);
+			eCode = cmdHandle_GetOTPBytes(p);
 			break;
 		}
 		case CBL_CMD_FLASH_WRITE:
 		{
-			eCode = cbl_HandleCmdFlashWrite(p);
+			eCode = cmdHandle_FlashWrite(p);
 			break;
 		}
 		case CBL_CMD_EXIT:
 		{
-			eCode = cbl_HandleCmdExit(p);
+			eCode = cmdHandle_Exit(p);
 			break;
 		}
 		case CBL_CMD_UNDEF:
@@ -561,7 +570,7 @@ static CBL_ErrCode_t cbl_HandleCmd(CBL_CMD_t cmdCode, CBL_Parser_t* p)
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_SendToHost(const char *buf, size_t len)
+static CBL_ErrCode_t sendToHost(const char *buf, size_t len)
 {
 	if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY) == HAL_OK)
 	{
@@ -573,7 +582,7 @@ static CBL_ErrCode_t cbl_SendToHost(const char *buf, size_t len)
 	}
 }
 
-static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len)
+static CBL_ErrCode_t recvFromHost(out char *buf, size_t len)
 {
 	if (HAL_UART_Receive_DMA(pUARTCmd, (uint8_t *)buf, len) == HAL_OK)
 	{
@@ -585,19 +594,19 @@ static CBL_ErrCode_t cbl_RecvFromHost(out char *buf, size_t len)
 	}
 }
 
-//static CBL_Err_Code_t cbl_StopRecvFromHost()
-//{
-//	if (HAL_UART_AbortReceive(pUARTCmd) == HAL_OK)
-//	{
-//		return CBL_ERR_OK;
-//	}
-//	else
-//	{
-//		return CBL_ERR_RX_ABORT;
-//	}
-//}
+static CBL_ErrCode_t stopRecvFromHost(void)
+{
+	if (HAL_UART_AbortReceive(pUARTCmd) == HAL_OK)
+	{
+		return CBL_ERR_OK;
+	}
+	else
+	{
+		return CBL_ERR_RX_ABORT;
+	}
+}
 
-static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
+static CBL_ErrCode_t sysState_Error(CBL_ErrCode_t eCode)
 {
 	DEBUG("Started\r\n");
 
@@ -617,7 +626,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		{
 			char msg[] = "\r\nERROR: Command too long\r\n";
 			WARNING("Overflow while reading happened\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -661,7 +670,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		{
 			char msg[] = "\r\nERROR: Invalid command\r\n";
 			INFO("Client sent an invalid command\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -669,7 +678,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 		{
 			char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
 			INFO("Command is missing parameter(s)");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -680,7 +689,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 							"Jumpable regions: FLASH, SRAM1, SRAM2, CCMRAM, BKPSRAM, SYSMEM and EXTMEM (if connected)\r\n";
 
 			INFO("Invalid address inputed for jumping\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -689,7 +698,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Internal error while erasing sectors\r\n";
 
 			WARNING("Error while erasing sectors\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -698,7 +707,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Wrong sector given\r\n";
 
 			INFO("Wrong sector given\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -707,7 +716,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Wrong sector count given\r\n";
 
 			INFO("Wrong sector count given\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -716,7 +725,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Invalid address range entered\r\n";
 
 			INFO("Invalid address range entered for writing\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -725,7 +734,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Inputed too big value\r\n";
 
 			INFO("User requested to write a too big chunk\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -734,7 +743,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Error while writing to flash\r\n";
 
 			INFO("Error while writing to flash on HAL level\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -743,7 +752,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Invalid erase type\r\n";
 
 			INFO("User entered invalid erase type\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -752,7 +761,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: HAL error while erasing sectors \r\n";
 
 			INFO("HAL error while erasing sector\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -761,7 +770,7 @@ static CBL_ErrCode_t cbl_StateError(CBL_ErrCode_t eCode)
 			char msg[] = "\r\nERROR: Unlocking flash failed\r\n";
 
 			WARNING("Unlocking flash with HAL failed\r\n");
-			cbl_SendToHost(msg, strlen(msg));
+			sendToHost(msg, strlen(msg));
 			eCode = CBL_ERR_OK;
 			break;
 		}
@@ -785,7 +794,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 {
 	if (huart == pUARTCmd)
 	{
-		cntrRecvChar++;
+		gRxCmdCntr++;
 	}
 }
 
@@ -797,7 +806,7 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
  * @brief
  * @return
  */
-static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_Version(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char verbuf[12] = CBL_VERSION;
@@ -808,24 +817,24 @@ static CBL_ErrCode_t cbl_HandleCmdVersion(CBL_Parser_t *p)
 	strlcat(verbuf, CRLF, 12);
 
 	/* Send response */
-	eCode = cbl_SendToHost(verbuf, strlen(verbuf));
+	eCode = sendToHost(verbuf, strlen(verbuf));
 
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdHelp(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_Help(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 
 	DEBUG("Started\r\n");
 
 	/* Send response */
-	eCode = cbl_SendToHost(cbl_supported_cmds, strlen(cbl_supported_cmds));
+	eCode = sendToHost(helpPrintout, strlen(helpPrintout));
 
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_Cid(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char cid[14] = "0x", cidhelp[10];
@@ -842,7 +851,7 @@ static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
 	strlcat(cid, CRLF, 12);
 
 	/* Send response */
-	eCode = cbl_SendToHost(cid, strlen(cid));
+	eCode = sendToHost(cid, strlen(cid));
 
 	return eCode;
 }
@@ -852,7 +861,7 @@ static CBL_ErrCode_t cbl_HandleCmdCid(CBL_Parser_t *p)
  * 				- Used to protect the software code stored in Flash memory.
  * 				- Reference manual - p. 93 - Explanation of RDP
  */
-static CBL_ErrCode_t cbl_HandleCmdGetRDPLvl(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_GetRDPLvl(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	FLASH_OBProgramInitTypeDef optBytes;
@@ -885,12 +894,28 @@ static CBL_ErrCode_t cbl_HandleCmdGetRDPLvl(CBL_Parser_t *p)
 	strlcat(buf, CRLF, 32);
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = sendToHost(buf, strlen(buf));
 
 	return eCode;
 }
 
-static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_GetOTPBytes(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	size_t len = FLASH_OTP_END - FLASH_OTP_BASE + 1;
+
+	DEBUG("Started\r\n");
+
+	/* Read len bytes from FLASH_OTP_BASE */
+
+	ERR_CHECK(eCode);
+
+	/* Send response */
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	return eCode;
+}
+
+static CBL_ErrCode_t cmdHandle_JumpTo(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char *charAddr;
@@ -900,7 +925,7 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 	DEBUG("Started\r\n");
 
 	/* Get the address in hex form */
-	charAddr = cbl_ParserGetArgVal(p, CBL_TXTCMD_JUMP_TO_ADDR, strlen(CBL_TXTCMD_JUMP_TO_ADDR));
+	charAddr = parserGetArgVal(p, CBL_TXTCMD_JUMP_TO_ADDR, strlen(CBL_TXTCMD_JUMP_TO_ADDR));
 	if (charAddr == NULL)
 		return CBL_ERR_NEED_PARAM;
 
@@ -908,7 +933,7 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 	addr = (uint32_t)strtoul(charAddr, NULL, 16);
 
 	/* Make sure we can jump to the wanted location */
-	eCode = cbl_VerifyJumpAddress(addr);
+	eCode = verifyJumpAddress(addr);
 	ERR_CHECK(eCode);
 
 	/* Add one to the address to set the T bit */
@@ -921,7 +946,7 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 	jump = (void *)addr;
 
 	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	ERR_CHECK(eCode);
 
 	/* Jump to requested address, user ensures requested address is valid */
@@ -929,31 +954,11 @@ static CBL_ErrCode_t cbl_HandleCmdJumpTo(CBL_Parser_t *p)
 	return eCode;
 }
 
-/**
- * @brief	Verifies address is in jumpable region
- * @note	Jumping to peripheral memory locations not permitted
- */
-static CBL_ErrCode_t cbl_VerifyJumpAddress(uint32_t addr)
-{
-	CBL_ErrCode_t eCode = CBL_ERR_JUMP_INV_ADDR;
-
-	if (IS_FLASH_ADDRESS(addr) ||
-	IS_CCMDATARAM_ADDRESS(addr) ||
-	IS_SRAM1_ADDRESS(addr) ||
-	IS_SRAM2_ADDRESS(addr) ||
-	IS_BKPSRAM_ADDRESS(addr) ||
-	IS_SYSMEM_ADDRESS(addr))
-	{
-		eCode = CBL_ERR_OK;
-	}
-
-	return eCode;
-}
 
 /**
  * @note	Sending sect=64 erases whole flash
  */
-static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_FlashErase(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char *charSect, *charCount, *type;
@@ -970,7 +975,7 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 	/* Only available bank */
 	settings.Banks = FLASH_BANK_1;
 
-	type = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_TYPE, strlen(CBL_TXTCMD_FLASH_ERASE_TYPE));
+	type = parser_GetVal(p, CBL_TXTCMD_FLASH_ERASE_TYPE, strlen(CBL_TXTCMD_FLASH_ERASE_TYPE));
 	if (type == NULL)
 		/* No sector present throw error */
 		return CBL_ERR_NEED_PARAM;
@@ -982,7 +987,7 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 		settings.TypeErase = FLASH_TYPEERASE_SECTORS;
 
 		/* Get first sector to write to */
-		charSect = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_SECT,
+		charSect = parserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_SECT,
 				strlen(CBL_TXTCMD_FLASH_ERASE_SECT));
 		if (charSect == NULL)
 			/* No sector present throw error */
@@ -998,7 +1003,7 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 		}
 
 		/* Get how many sectors to erase */
-		charCount = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_COUNT,
+		charCount = parserGetArgVal(p, CBL_TXTCMD_FLASH_ERASE_COUNT,
 				strlen(CBL_TXTCMD_FLASH_ERASE_COUNT));
 		if (charCount == NULL)
 			/* No sector count present throw error */
@@ -1052,15 +1057,105 @@ static CBL_ErrCode_t cbl_HandleCmdFlashErase(CBL_Parser_t *p)
 		return CBL_ERR_SECTOR;
 
 	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 
 	return eCode;
 }
+
+static CBL_ErrCode_t cmdHandle_FlashWrite(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	char buf[CBL_FLASH_WRITE_SZ] = { 0 }, *charStart, *charLen;
+	uint32_t start, len;
+	HAL_StatusTypeDef HALCode;
+
+	DEBUG("Started\r\n");
+
+	/* Get starting address */
+	charStart = parserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_START,
+			strlen(CBL_TXTCMD_FLASH_WRITE_START));
+	if (charStart == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Get length in bytes */
+	charLen = parserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_COUNT,
+			strlen(CBL_TXTCMD_FLASH_WRITE_COUNT));
+	if (charLen == NULL)
+		return CBL_ERR_NEED_PARAM;
+
+	/* Convert start address to uint32_t */
+	start = (uint32_t)strtoul(charStart, NULL, 16);
+
+	/* Convert length to uint32_t */
+	len = (uint32_t)strtoul(charLen, NULL, 10);
+
+	/* Check validity of input addresses */
+	if (IS_FLASH_ADDRESS(start) == false || IS_FLASH_ADDRESS(start + len) == false)
+		return CBL_ERR_WRITE_INV_ADDR;
+
+	/* Check if len is too big  */
+	if (len > CBL_FLASH_WRITE_SZ)
+		return CBL_ERR_WRITE_TOO_BIG;
+
+	/* Reset UART byte counter */
+	gRxCmdCntr = 0;
+
+	/* Notify host bootloader is ready to receive bytes */
+	sendToHost(CBL_TXTRESP_FLASH_WRITE_READY, strlen(CBL_TXTRESP_FLASH_WRITE_READY));
+
+	/* Request 'len' bytes */
+	eCode = recvFromHost(buf, len);
+	ERR_CHECK(eCode);
+
+	/* Wait for 'len' bytes */
+	while (gRxCmdCntr != 1)
+	{
+	}
+
+	/* Write data to flash */
+	LED_ON(BLUE);
+
+	/* Unlock flash */
+	if (HAL_FLASH_Unlock() != HAL_OK)
+		return CBL_ERR_HAL_UNLOCK;
+
+	/* Write to flash */
+	for (int i = 0; i < len; i++)
+	{
+		/* Write a byte */
+		HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i, buf[i]);
+		if (HALCode != HAL_OK)
+		{
+			HAL_FLASH_Lock();
+			LED_OFF(BLUE);
+			return CBL_ERR_HAL_WRITE;
+		}
+	}
+
+	HAL_FLASH_Lock();
+
+	LED_OFF(BLUE);
+
+	/* Send response */
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	return eCode;
+}
+
+static CBL_ErrCode_t cmdHandle_MemRead(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+	DEBUG("Started\r\n");
+
+	/* Send response */
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	return eCode;
+}
+
 /**
  * @brief		Enables write protection on individual flash sectors
  * @param EnDis	Write protection state: OB_WRPSTATE_ENABLE or OB_WRPSTATE_DISABLE
  */
-static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis)
+static CBL_ErrCode_t cmdHandle_ChangeWriteProt(CBL_Parser_t *p, uint32_t EnDis)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	char *charMask;
@@ -1077,7 +1172,7 @@ static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDi
 	}
 
 	/* Mask of sectors to affect */
-	charMask = cbl_ParserGetArgVal(p, CBL_TXTCMD_EN_WRITE_PROT_MASK,
+	charMask = parserGetArgVal(p, CBL_TXTCMD_EN_WRITE_PROT_MASK,
 			strlen(CBL_TXTCMD_EN_WRITE_PROT_MASK));
 
 	if (charMask == NULL)
@@ -1117,14 +1212,14 @@ static CBL_ErrCode_t cbl_HandleCmdChangeWriteProt(CBL_Parser_t *p, uint32_t EnDi
 	HAL_FLASH_OB_Lock();
 
 	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
 	return eCode;
 }
 
 /**
  * @brief	Gets write protection status of all sectors in binary form
  */
-static CBL_ErrCode_t cbl_HandleCmdGetWriteProt(CBL_Parser_t *p)
+static CBL_ErrCode_t cmdHandle_GetWriteProt(CBL_Parser_t *p)
 {
 	CBL_ErrCode_t eCode = CBL_ERR_OK;
 	FLASH_OBProgramInitTypeDef OBInit;
@@ -1147,10 +1242,44 @@ static CBL_ErrCode_t cbl_HandleCmdGetWriteProt(CBL_Parser_t *p)
 	invWRPSector = (uint16_t) ~OBInit.WRPSector & (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
 
 	/* Fill the buffer with binary data */
-	cbl_uitobina(invWRPSector, buf, FLASH_SECTOR_TOTAL);
+	uitobina(invWRPSector, buf, FLASH_SECTOR_TOTAL);
 
 	/* Send response */
-	eCode = cbl_SendToHost(buf, strlen(buf));
+	eCode = sendToHost(buf, strlen(buf));
+	return eCode;
+}
+
+static CBL_ErrCode_t cmdHandle_Exit(CBL_Parser_t *p)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_OK;
+
+	DEBUG("Started\r\n");
+
+	isExitReq = true;
+
+	/* Send response */
+	eCode = sendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
+	return eCode;
+}
+
+/**
+ * @brief	Verifies address is in jumpable region
+ * @note	Jumping to peripheral memory locations not permitted
+ */
+static CBL_ErrCode_t verifyJumpAddress(uint32_t addr)
+{
+	CBL_ErrCode_t eCode = CBL_ERR_JUMP_INV_ADDR;
+
+	if (IS_FLASH_ADDRESS(addr) ||
+	IS_CCMDATARAM_ADDRESS(addr) ||
+	IS_SRAM1_ADDRESS(addr) ||
+	IS_SRAM2_ADDRESS(addr) ||
+	IS_BKPSRAM_ADDRESS(addr) ||
+	IS_SYSMEM_ADDRESS(addr))
+	{
+		eCode = CBL_ERR_OK;
+	}
+
 	return eCode;
 }
 
@@ -1159,7 +1288,7 @@ static CBL_ErrCode_t cbl_HandleCmdGetWriteProt(CBL_Parser_t *p)
  * @param str		User must ensure it is at least 'numofbits' + 3 bytes long
  * @param numofbits	Number of bits from num to convert to str
  */
-static void cbl_uitobina(uint32_t num, out char *str, uint8_t numofbits)
+static void uitobina(uint32_t num, out char *str, uint8_t numofbits)
 {
 	bool bit;
 	char i;
@@ -1184,120 +1313,3 @@ static void cbl_uitobina(uint32_t num, out char *str, uint8_t numofbits)
 	*str = '\0';
 }
 
-static CBL_ErrCode_t cbl_HandleCmdMemRead(CBL_Parser_t *p)
-{
-	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	DEBUG("Started\r\n");
-
-	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
-	return eCode;
-}
-
-static CBL_ErrCode_t cbl_HandleCmdGetOTPBytes(CBL_Parser_t *p)
-{
-	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	size_t len = FLASH_OTP_END - FLASH_OTP_BASE + 1;
-
-	DEBUG("Started\r\n");
-
-	/* Read len bytes from FLASH_OTP_BASE */
-
-	ERR_CHECK(eCode);
-
-	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
-	return eCode;
-}
-
-static CBL_ErrCode_t cbl_HandleCmdFlashWrite(CBL_Parser_t *p)
-{
-	CBL_ErrCode_t eCode = CBL_ERR_OK;
-	char buf[CBL_FLASH_WRITE_SZ] = { 0 }, *charStart, *charLen;
-	uint32_t start, len;
-	HAL_StatusTypeDef HALCode;
-
-	DEBUG("Started\r\n");
-
-	/* Get starting address */
-	charStart = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_START,
-			strlen(CBL_TXTCMD_FLASH_WRITE_START));
-	if (charStart == NULL)
-		return CBL_ERR_NEED_PARAM;
-
-	/* Get length in bytes */
-	charLen = cbl_ParserGetArgVal(p, CBL_TXTCMD_FLASH_WRITE_COUNT,
-			strlen(CBL_TXTCMD_FLASH_WRITE_COUNT));
-	if (charLen == NULL)
-		return CBL_ERR_NEED_PARAM;
-
-	/* Convert start address to uint32_t */
-	start = (uint32_t)strtoul(charStart, NULL, 16);
-
-	/* Convert length to uint32_t */
-	len = (uint32_t)strtoul(charLen, NULL, 10);
-
-	/* Check validity of input addresses */
-	if (IS_FLASH_ADDRESS(start) == false || IS_FLASH_ADDRESS(start + len) == false)
-		return CBL_ERR_WRITE_INV_ADDR;
-
-	/* Check if len is too big  */
-	if (len > CBL_FLASH_WRITE_SZ)
-		return CBL_ERR_WRITE_TOO_BIG;
-
-	/* Reset UART byte counter */
-	cntrRecvChar = 0;
-
-	/* Notify host bootloader is ready to receive bytes */
-	cbl_SendToHost(CBL_TXTRESP_FLASH_WRITE_READY, strlen(CBL_TXTRESP_FLASH_WRITE_READY));
-
-	/* Request 'len' bytes */
-	eCode = cbl_RecvFromHost(buf, len);
-	ERR_CHECK(eCode);
-
-	/* Wait for 'len' bytes */
-	while (cntrRecvChar != 1)
-	{
-	}
-
-	/* Write data to flash */
-	LED_ON(BLUE);
-
-	/* Unlock flash */
-	if (HAL_FLASH_Unlock() != HAL_OK)
-		return CBL_ERR_HAL_UNLOCK;
-
-	/* Write to flash */
-	for (int i = 0; i < len; i++)
-	{
-		/* Write a byte */
-		HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i, buf[i]);
-		if (HALCode != HAL_OK)
-		{
-			HAL_FLASH_Lock();
-			LED_OFF(BLUE);
-			return CBL_ERR_HAL_WRITE;
-		}
-	}
-
-	HAL_FLASH_Lock();
-
-	LED_OFF(BLUE);
-
-	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
-	return eCode;
-}
-
-static CBL_ErrCode_t cbl_HandleCmdExit(CBL_Parser_t *p)
-{
-	CBL_ErrCode_t eCode = CBL_ERR_OK;
-
-	DEBUG("Started\r\n");
-
-	isExitReq = true;
-
-	/* Send response */
-	eCode = cbl_SendToHost(CBL_TXT_SUCCESS, strlen(CBL_TXT_SUCCESS));
-	return eCode;
-}

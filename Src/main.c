@@ -96,7 +96,7 @@ int main(void)
 	/* Initialize all configured peripherals */
 	MX_GPIO_Init();
 	/* USER CODE BEGIN 2 */
-	CBL_Start();
+	CBL_Run();
 	/* This shall never be reached */
 	/* USER CODE END 2 */
 
