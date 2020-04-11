@@ -1314,7 +1314,7 @@ static CBL_ErrCode_t verifyDigitsOnly(const char *s, size_t len, uint8_t base)
 		i--;
 		if (base == 10)
 		{
-			if (isdigit(s[--i]) == 0)
+			if (isdigit(s[i]) == 0)
 				return CBL_ERR_NOT_DIG;
 		}
 		else if (base == 16)
