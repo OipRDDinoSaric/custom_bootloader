@@ -35,14 +35,14 @@ On the other hand, if user doesn't need the debug output, build and flash the pr
 * [version](#cmd_version) : Gets a version of the bootloader
 * [help](#cmd_help) : Makes life easier
 * [cid](#cmd_cid) : Gets chip identification number
-* [get-rdp-level](#cmd_get-rdp-level) : Gets read protection, used to protect the software code stored in Flash memory. Ref. man. p. 93
+* [get-rdp-level](#cmd_get-rdp-level) : Gets read protection Ref. man. p. 93
 * [jump-to](#cmd_jump-to) : Jumps to a requested address
 * [flash-erase](#cmd_flash-erase) : Erases flash memory
-* [flash-write](#cmd_flash-write) : Writes to flash, returns "\r\nready\r\n" when ready to receive bytes
+* [flash-write](#cmd_flash-write) : Writes to flash
 * [mem-read](#cmd_mem-read) : Read bytes from memory
-* [en-write-prot](#cmd_en-write-prot) : Enables write protection per sector, as selected with "mask"
-* [dis-write-prot](#cmd_dis-write-prot) : Disables write protection per sector, as selected with "mask"
-* [get-write-prot](#cmd_get-write-prot) : Returns bit array of sector write protection. MSB corresponds to sector with highest number
+* [en-write-prot](#cmd_en-write-prot) : Enables write protection per sector
+* [dis-write-prot](#cmd_dis-write-prot) : Disables write protection per sector
+* [get-write-prot](#cmd_get-write-prot) : Returns bit array of sector write protection
 * [exit](#cmd_exit) : Exits the bootloader and starts the user application
 
 ### More about
