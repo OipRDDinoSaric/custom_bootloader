@@ -1,6 +1,6 @@
 # STM32F4 Discovery board custom bootloader with shell interface
 
-This project is a bootloader for STM32F4 Disc1 board. It is also easily transferable to other STM32F4 platforms. 
+This project is a bootloader for STM32F4 Disc1 board with STM32F407VG. It is also easily transferable to other STM32F4 platforms. 
 
 Project is writen using "System workbench for STM32" based on Eclipse.
 
