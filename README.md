@@ -29,7 +29,7 @@ On the other hand, if user doesn't need the debug output, build and flash the pr
 
  - Commands are case insensitive
  
- - On error bootloader returns "ERROR:<Explanation of error>"
+ - On error bootloader returns "ERROR:\<Explanation of error\>"
 
 ### List
 * [version](#cmd_version) : Gets a version of the bootloader
