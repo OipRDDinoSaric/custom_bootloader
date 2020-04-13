@@ -4,6 +4,8 @@ This project is a bootloader for STM32F4 Disc1 board with STM32F407VG. It is als
 
 Project is writen using "System workbench for STM32" based on Eclipse.
 
+## Command interface 
+
 | Command     | interface     |
 |-------------|---------------|
 |  USART3 TX  |      PA2      |
