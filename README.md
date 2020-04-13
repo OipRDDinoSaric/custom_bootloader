@@ -148,6 +148,10 @@ Response:
 Send bytes:
 
     <5 bytes>
+    
+Response: 
+
+    OK
 
 <a name="cmd_mem-read"></a>
 ####  [mem-read](#cmd_mem-read)—Read bytes from memory
