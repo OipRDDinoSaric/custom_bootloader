@@ -262,7 +262,7 @@ static cbl_err_code_t runShellSystem (void)
         switch (state)
         {
             case STATE_OPER:
-
+            {
                 eCode = sysState_Operation();
 
                 /* Switch state if needed */
@@ -278,10 +278,11 @@ static cbl_err_code_t runShellSystem (void)
                 {
                     /* Dont change state */
                 }
+            }
             break;
 
             case STATE_ERR:
-
+            {
                 eCode = sysState_Error(eCode);
 
                 /* Switch state */
@@ -293,24 +294,25 @@ static cbl_err_code_t runShellSystem (void)
                 {
                     nextState = STATE_OPER;
                 }
+            }
             break;
 
             case STAT_EXIT:
-
+            {
                 /* Deconstructor */
                 char bye[] = "Exiting\r\n\r\n";
 
-                INFO(bye)
-                ;
+                INFO(bye);
                 sendToHost(bye, strlen(bye));
 
                 isExitNeeded = true;
-
+            }
             break;
 
             default:
-
+            {
                 eCode = CBL_ERR_STATE;
+            }
             break;
 
         }
@@ -603,70 +605,84 @@ static cbl_err_code_t handleCmd (cmd_t cmdCode, parser_t * phPrsr)
     switch (cmdCode)
     {
         case CMD_VERSION:
-
+        {
             eCode = cmdHandle_Version(phPrsr);
+        }
         break;
 
         case CMD_HELP:
-
+        {
             eCode = cmdHandle_Help(phPrsr);
+        }
         break;
 
         case CMD_CID:
-
+        {
             eCode = cmdHandle_Cid(phPrsr);
+        }
         break;
 
         case CMD_GET_RDP_LVL:
-
+        {
             eCode = cmdHandle_GetRDPLvl(phPrsr);
+        }
         break;
 
         case CMD_JUMP_TO:
-
+        {
             eCode = cmdHandle_JumpTo(phPrsr);
+        }
         break;
 
         case CMD_FLASH_ERASE:
-
+        {
             eCode = cmdHandle_FlashErase(phPrsr);
+        }
         break;
 
         case CMD_EN_WRITE_PROT:
-
+        {
             eCode = cmdHandle_ChangeWriteProt(phPrsr, OB_WRPSTATE_ENABLE);
+        }
         break;
 
         case CMD_DIS_WRITE_PROT:
-
+        {
             eCode = cmdHandle_ChangeWriteProt(phPrsr, OB_WRPSTATE_DISABLE);
+        }
         break;
 
         case CMD_MEM_READ:
-
+        {
             eCode = cmdHandle_MemRead(phPrsr);
+        }
         break;
 
         case CMD_READ_SECT_PROT_STAT:
-
+        {
             eCode = cmdHandle_GetWriteProt(phPrsr);
+        }
         break;
 
         case CMD_FLASH_WRITE:
-
+        {
             eCode = cmdHandle_FlashWrite(phPrsr);
+        }
         break;
 
         case CMD_EXIT:
-
+        {
             eCode = cmdHandle_Exit(phPrsr);
+        }
         break;
 
         case CMD_UNDEF:
             /* No break */
         default:
+        {
             eCode = CBL_ERR_CMDCD;
-
+        }
+        break;
     }
     DEBUG("Responded\r\n");
     return eCode;
@@ -729,216 +745,216 @@ static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
     switch (eCode)
     {
         case CBL_ERR_OK:
-
             /* FALSE ALARM - no error */
         break;
 
         case CBL_ERR_READ_OF:
-
+        {
             char msg[] = "\r\nERROR: Command too long\r\n";
-            WARNING("Overflow while reading happened\r\n")
-            ;
+            WARNING("Overflow while reading happened\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_WRITE:
-
-            WARNING("Error occurred while writing\r\n")
-            ;
+        {
+            WARNING("Error occurred while writing\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_STATE:
-
+        {
             WARNING("System entered unknown state, "
-                    "returning to operational\r\n")
-            ;
+                    "returning to operational\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_HAL_TX:
-
-            WARNING("HAL transmit error happened\r\n")
-            ;
+        {
+            WARNING("HAL transmit error happened\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_HAL_RX:
-
-            WARNING("HAL receive error happened\r\n")
-            ;
+        {
+            WARNING("HAL receive error happened\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_RX_ABORT:
-
-            WARNING("Error happened while aborting receive\r\n")
-            ;
+        {
+            WARNING("Error happened while aborting receive\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_CMD_SHORT:
-
-            INFO("Client sent an empty command\r\n")
-            ;
+        {
+            INFO("Client sent an empty command\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_CMD_UNDEF:
-
+        {
             char msg[] = "\r\nERROR: Invalid command\r\n";
-            INFO("Client sent an invalid command\r\n")
-            ;
+            INFO("Client sent an invalid command\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_NEED_PARAM:
-
+        {
             char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
-            INFO("Command is missing parameter(s)")
-            ;
+            INFO("Command is missing parameter(s)");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_JUMP_INV_ADDR:
-
+        {
             char msg[] = "\r\nERROR: Invalid address\r\n"
                     "Jumpable regions: FLASH, SRAM1, SRAM2, CCMRAM, "
                     "BKPSRAM, SYSMEM and EXTMEM (if connected)\r\n";
 
-            INFO("Invalid address inputed for jumping\r\n")
-            ;
+            INFO("Invalid address inputed for jumping\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_SECTOR:
-
+        {
             char msg[] = "\r\nERROR: Internal error while erasing sectors\r\n";
 
-            WARNING("Error while erasing sectors\r\n")
-            ;
+            WARNING("Error while erasing sectors\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_INV_SECT:
-
+        {
             char msg[] = "\r\nERROR: Wrong sector given\r\n";
 
-            INFO("Wrong sector given\r\n")
-            ;
+            INFO("Wrong sector given\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_INV_SECT_COUNT:
-
+        {
             char msg[] = "\r\nERROR: Wrong sector count given\r\n";
 
-            INFO("Wrong sector count given\r\n")
-            ;
+            INFO("Wrong sector count given\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_WRITE_INV_ADDR:
-
+        {
             char msg[] = "\r\nERROR: Invalid address range entered\r\n";
 
-            INFO("Invalid address range entered for writing\r\n")
-            ;
+            INFO("Invalid address range entered for writing\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_WRITE_TOO_BIG:
-
+        {
             char msg[] = "\r\nERROR: Inputed too big value\r\n";
 
-            INFO("User requested to write a too big chunk\r\n")
-            ;
+            INFO("User requested to write a too big chunk\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_HAL_WRITE:
-
+        {
             char msg[] = "\r\nERROR: Error while writing to flash\r\n";
 
-            INFO("Error while writing to flash on HAL level\r\n")
-            ;
+            INFO("Error while writing to flash on HAL level\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_ERASE_INV_TYPE:
-
+        {
             char msg[] = "\r\nERROR: Invalid erase type\r\n";
 
-            INFO("User entered invalid erase type\r\n")
-            ;
+            INFO("User entered invalid erase type\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_HAL_ERASE:
-
+        {
             char msg[] = "\r\nERROR: HAL error while erasing sectors \r\n";
 
-            INFO("HAL error while erasing sector\r\n")
-            ;
+            INFO("HAL error while erasing sector\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_HAL_UNLOCK:
-
+        {
             char msg[] = "\r\nERROR: Unlocking flash failed\r\n";
 
-            WARNING("Unlocking flash with HAL failed\r\n")
-            ;
+            WARNING("Unlocking flash with HAL failed\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_INV_PARAM:
-
-            ERROR("Wrong parameter sent to a function\r\n")
-            ;
+        {
+            ERROR("Wrong parameter sent to a function\r\n");
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_NOT_DIG:
-
+        {
             char msg[] = "\r\nERROR: Number parameter contains letters\r\n";
 
-            WARNING("User entered number parameter containing letters\r\n")
-            ;
+            WARNING("User entered number parameter containing letters\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         case CBL_ERR_1ST_NOT_ZERO:
-
+        {
             char msg[] =
                     "\r\nERROR: Number parameter must have '0' at the start "
                             " when 'x' is present\r\n";
 
             WARNING("User entered number parameter with 'x', "
-                    "but not '0' on index 0\r\n")
-            ;
+                    "but not '0' on index 0\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
+        }
         break;
 
         default:
-
+        {
             ERROR("Unhandled error happened\r\n")
             ;
+        }
         break;
 
     }
@@ -1109,19 +1125,22 @@ static cbl_err_code_t cmdHandle_GetRDPLvl (parser_t * phPrsr)
     switch (optBytes.RDPLevel)
     {
         case OB_RDP_LEVEL_0:
-
+        {
             strcpy(buf, "level 0");
+        }
         break;
 
         case OB_RDP_LEVEL_2:
-
+        {
             strcpy(buf, "level 2");
+        }
         break;
 
         default:
-
+        {
             /* Any other value is RDP level 1 */
             strcpy(buf, "level 1");
+        }
         break;
     }
 
