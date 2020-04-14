@@ -120,7 +120,7 @@ Parameters:
 
 - type - Defines type of flash erase. "mass" erases all sectors, "sector" erases only selected sectors
     
-- sector - First sector to erase. Bootloader is on sectors 0 and 1. Not needed with mass erase
+- sector - First sector to erase. Bootloader is on sectors 0, 1 and 2. Not needed with mass erase
     
 - count - Number of sectors to erase. Not needed with mass erase
 
