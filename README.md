@@ -21,7 +21,7 @@ Debug interface is enabled with semihosting through ST-Link integrated on the bo
 If user wants to enable debug output, he/she should build and flash the program with "CBL Debug.cfg". 
 On the other hand, if user doesn't need the debug output, build and flash the program with "CBL Release.cfg".
 
-**NOTE:** If program is flashed using "CBL Debug.cfg" and ST-Link losses connection with the "System workbench for STM32" STM32 application will not work. Because of that use "CBL Debug.cfg" only when changing the application. 
+**NOTE:** If program is flashed using "CBL Debug.cfg" and ST-Link losses connection with the "System workbench for STM32" STM32 application will not work. Because of that use "CBL Debug.cfg" only when debugging. 
 
 ## Command reference
 
@@ -120,7 +120,7 @@ Parameters:
 
 - type - Defines type of flash erase. "mass" erases all sectors, "sector" erases only selected sectors
     
-- sector - First sector to erase. Bootloader is on sectors 0 and 1. Not needed with mass erase
+- sector - First sector to erase. Bootloader is on sectors 0, 1 and 2. Not needed with mass erase
     
 - count - Number of sectors to erase. Not needed with mass erase
 
