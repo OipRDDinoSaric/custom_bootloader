@@ -191,27 +191,27 @@ static void shellInit (void)
 
 // \f - new page
 /**
- * @brief	Gives controler to the user application
- * 			Steps:
- * 			1) 	Set the main stack pointer (MSP) to the one of the user
- * 			    application. User application MSP is contained in the first
- * 			    four bytes of flashed user application.
+ * @brief   Gives controler to the user application
+ *          Steps:
+ *          1)  Set the main stack pointer (MSP) to the one of the user
+ *              application. User application MSP is contained in the first
+ *              four bytes of flashed user application.
  *
- * 			2)	Set the reset handler to the one of the user application.
- * 				User application reset handler is right after the MSP, size of
- * 				4 bytes.
+ *          2)  Set the reset handler to the one of the user application.
+ *              User application reset handler is right after the MSP, size of
+ *              4 bytes.
  *
- * 			3)	Jump to the user application reset handler. Giving control to
- * 			    the user application.
+ *          3)  Jump to the user application reset handler. Giving control to
+ *              the user application.
  *
- * @attention	DO NOT FORGET: In user application VECT_TAB_OFFSET set to the
+ * @attention   DO NOT FORGET: In user application VECT_TAB_OFFSET set to the
  *          offset of user application
- * 			from the start of the flash.
- * 			e.g. If our application starts in the 2nd sector we would write
- * 			#define VECT_TAB_OFFSET 0x8000.
- * 			VECT_TAB_OFFSET is located in system_Stm32f4xx.c
+ *          from the start of the flash.
+ *          e.g. If our application starts in the 2nd sector we would write
+ *          #define VECT_TAB_OFFSET 0x8000.
+ *          VECT_TAB_OFFSET is located in system_Stm32f4xx.c
  *
- * @return	Procesor never returns from this application
+ * @return  Procesor never returns from this application
  */
 static void runUserApp (void)
 {
@@ -244,8 +244,8 @@ static void runUserApp (void)
 
 // \f - new page
 /**
- * @brief	Runs the shell for the bootloader.
- * @return	CBL_ERR_NO when no error, else returns an error code.
+ * @brief   Runs the shell for the bootloader.
+ * @return  CBL_ERR_NO when no error, else returns an error code.
  */
 static cbl_err_code_t runShellSystem (void)
 {
@@ -412,14 +412,14 @@ static cbl_err_code_t waitForCmd (char * buf, size_t len)
 
 // \f - new page
 /**
- * @brief		    Parses a command into CBL_Parser_t. Command's form is as
+ * @brief           Parses a command into CBL_Parser_t. Command's form is as
  *                  follows: somecmd pname1=pval1 pname2=pval2
  *
- * @note		    This function is destructive to input cmd, as it replaces
+ * @note            This function is destructive to input cmd, as it replaces
  *                  all ' ' and '='
- * 				    with NULL terminator and transform all to lower case
+ *                  with NULL terminator and transform all to lower case
  *
- * @param cmd[in]	NULL terminated string containing command without CR LF,
+ * @param cmd[in]   NULL terminated string containing command without CR LF,
  *                  parser changes it to lower case
  *
  * @param len[in]   Length of string contained in cmd
@@ -477,11 +477,11 @@ static cbl_err_code_t parser_Run (char * cmd, size_t len, parser_t * phPrsr)
 
 // \f - new page
 /**
- * @brief			Gets value from a parameter
- * @param p			parser
- * @param name		Name of a parameter
- * @param lenName	Name length
- * @return	Pointer to the value
+ * @brief           Gets value from a parameter
+ * @param p         parser
+ * @param name      Name of a parameter
+ * @param lenName   Name length
+ * @return  Pointer to the value
  */
 static char *parser_GetVal (parser_t * phPrsr, char * name, size_t lenName)
 {
@@ -1023,7 +1023,8 @@ static cbl_err_code_t cmdHandle_Help (parser_t * pphPrsr)
             "\"" TXT_PAR_FLASH_ERASE_TYPE_SECT "\" erases only selected "
             "sectors." CRLF
             "    " TXT_PAR_FLASH_ERASE_SECT " - First sector to erase. "
-            "Bootloader is on sectors 0 and 1. Not needed with mass erase." CRLF
+            "Bootloader is on sectors 0, 1 and 2."
+            " Not needed with mass erase." CRLF
             "    " TXT_PAR_FLASH_ERASE_COUNT " - Number of sectors to erase. "
             "Not needed with mass erase." CRLF CRLF
             "- " TXT_CMD_FLASH_WRITE " | Writes to flash, returns "
@@ -1046,9 +1047,7 @@ static cbl_err_code_t cmdHandle_Help (parser_t * pphPrsr)
             "     " TXT_PAR_EN_WRITE_PROT_MASK " - Mask in hex form for sectors"
             " where LSB corresponds to sector 0." CRLF CRLF
             "- " TXT_CMD_READ_SECT_PROT_STAT " | Returns bit array of sector "
-            "write protection. MSB corresponds to sector with highest "
-            "number." CRLF
-            "     " CRLF CRLF
+            "write protection. LSB corresponds to sector 0. " CRLF CRLF
             "- "TXT_CMD_EXIT " | Exits the bootloader and starts the user "
             "application" CRLF CRLF
             "********************************************************" CRLF
@@ -1107,9 +1106,9 @@ static cbl_err_code_t cmdHandle_Cid (parser_t * phPrsr)
 
 // \f - new page
 /**
- * @brief	RDP - Read protection
- * 				- Used to protect the software code stored in Flash memory.
- * 				- Reference manual - p. 93 - Explanation of RDP
+ * @brief   RDP - Read protection
+ *              - Used to protect the software code stored in Flash memory.
+ *              - Reference manual - p. 93 - Explanation of RDP
  */
 static cbl_err_code_t cmdHandle_GetRDPLvl (parser_t * phPrsr)
 {
@@ -1179,9 +1178,9 @@ static cbl_err_code_t cmdHandle_JumpTo (parser_t * phPrsr)
 
     /* Add 1 to the address to set the T bit */
     addr++;
-    /*!<	T bit is 0th bit of a function address and tells the processor
-     *	if command is ARM T=0 or thumb T=1. STM uses thumb commands.
-     *	Reference: https://www.youtube.com/watch?v=VX_12SjnNhY */
+    /*!<    T bit is 0th bit of a function address and tells the processor
+     *  if command is ARM T=0 or thumb T=1. STM uses thumb commands.
+     *  Reference: https://www.youtube.com/watch?v=VX_12SjnNhY */
 
     /* Make a function to jump to */
     jump = (void *)addr;
@@ -1197,7 +1196,7 @@ static cbl_err_code_t cmdHandle_JumpTo (parser_t * phPrsr)
 
 // \f - new page
 /**
- * @note	Sending sect=64 erases whole flash
+ * @note    Sending sect=64 erases whole flash
  */
 static cbl_err_code_t cmdHandle_FlashErase (parser_t * phPrsr)
 {
@@ -1452,8 +1451,8 @@ static cbl_err_code_t cmdHandle_MemRead (parser_t * phPrsr)
 
 // \f - new page
 /**
- * @brief		Enables write protection on individual flash sectors
- * @param EnDis	Write protection state: OB_WRPSTATE_ENABLE or
+ * @brief       Enables write protection on individual flash sectors
+ * @param EnDis Write protection state: OB_WRPSTATE_ENABLE or
  *              OB_WRPSTATE_DISABLE
  */
 static cbl_err_code_t cmdHandle_ChangeWriteProt (parser_t * phPrsr,
@@ -1524,7 +1523,7 @@ static cbl_err_code_t cmdHandle_ChangeWriteProt (parser_t * phPrsr,
 
 // \f - new page
 /**
- * @brief	Gets write protection status of all sectors in binary form
+ * @brief   Gets write protection status of all sectors in binary form
  */
 static cbl_err_code_t cmdHandle_GetWriteProt (parser_t * phPrsr)
 {
@@ -1573,14 +1572,14 @@ static cbl_err_code_t cmdHandle_Exit (parser_t * phPrsr)
 }
 
 /**
- * @brief		    Converts string containing only number (e.g. 0A3F or 0x0A3F)
+ * @brief           Converts string containing only number (e.g. 0A3F or 0x0A3F)
  *                  to uint32_t
  *
- * @param s[in]	    String to convert
+ * @param s[in]     String to convert
  *
  * @param len[in]   Length of s
  *
- * @param num[out]	Output number
+ * @param num[out]  Output number
  *
  * @param base[in]  Base of digits string is written into, supported 10
  *                  or 16 only
@@ -1636,8 +1635,8 @@ static cbl_err_code_t verifyDigitsOnly (const char * str, size_t len,
 
 // \f - new page
 /**
- * @brief	Verifies address is in jumpable region
- * @note	Jumping to peripheral memory locations not permitted
+ * @brief   Verifies address is in jumpable region
+ * @note    Jumping to peripheral memory locations not permitted
  */
 static cbl_err_code_t verifyJumpAddress (uint32_t addr)
 {
@@ -1657,7 +1656,7 @@ static cbl_err_code_t verifyJumpAddress (uint32_t addr)
 }
 
 /**
- * @brief			    Convert uint32_t to binary string
+ * @brief               Convert uint32_t to binary string
  *
  * @param str[out]      User must ensure it is at least
  *                      'numofbits' + 3 bytes long
