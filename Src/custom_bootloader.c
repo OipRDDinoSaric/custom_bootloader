@@ -883,7 +883,8 @@ static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
 
         case CBL_ERR_HAL_WRITE:
         {
-            char msg[] = "\r\nERROR: Error while writing to flash\r\n";
+            char msg[] = "\r\nERROR: Error while writing to flash."
+                    " Retry last message.\r\ n";
 
             INFO("Error while writing to flash on HAL level\r\n");
             sendToHost(msg, strlen(msg));
@@ -955,9 +956,9 @@ static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
         {
             char msg[] =
                     "\r\nERROR: Data corrupted during transport (Invalid CRC)."
-                            " Restart last message.";
+                            " Retry last message.\r\n";
 
-            WARNING("Data corrupted during transport, invalid CRC");
+            WARNING("Data corrupted during transport, invalid CRC\r\n");
             sendToHost(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
