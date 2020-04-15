@@ -130,6 +130,7 @@ static cbl_err_code_t cmdHandle_MemRead (parser_t * phPrsr);
 static cbl_err_code_t cmdHandle_GetWriteProt (parser_t * phPrsr);
 static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr);
 static cbl_err_code_t cmdHandle_Exit (parser_t * phPrsr);
+static cbl_err_code_t checkCRCValue (uint32_t * write_buf, uint32_t len);
 static cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,
         uint8_t base);
 static cbl_err_code_t verifyDigitsOnly (const char * str, size_t i,
@@ -950,6 +951,18 @@ static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
         }
         break;
 
+        case CBL_ERR_CRC_WRONG:
+        {
+            char msg[] =
+                    "\r\nERROR: Data corrupted during transport (Invalid CRC)."
+                            " Restart last message.";
+
+            WARNING("Data corrupted during transport, invalid CRC");
+            sendToHost(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
         default:
         {
             ERROR("Unhandled error happened\r\n")
@@ -1322,7 +1335,7 @@ static cbl_err_code_t cmdHandle_FlashErase (parser_t * phPrsr)
 static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    char buf[FLASH_WRITE_SZ] = { 0 };
+    uint32_t write_buf[FLASH_WRITE_SZ] = { 0 };
     char *charStart = NULL;
     char *charLen = NULL;
     uint32_t start;
@@ -1372,7 +1385,7 @@ static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
     sendToHost(TXT_RESP_FLASH_WRITE_READY, strlen(TXT_RESP_FLASH_WRITE_READY));
 
     /* Request 'len' bytes */
-    eCode = recvFromHost(buf, len);
+    eCode = recvFromHost(write_buf, len);
     ERR_CHECK(eCode);
 
     while (gRxCmdCntr != 1)
@@ -1380,8 +1393,12 @@ static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
         /* Wait for 'len' bytes */
     }
 
-    /* Write data to flash */
+    /* Write data to flash, signalize with blue LED */
     LED_ON(BLUE);
+
+    /* Check CRC value */
+    eCode = checkCRCValue(write_buf, len);
+    ERR_CHECK(eCode);
 
     /* Unlock flash */
     if (HAL_FLASH_Unlock() != HAL_OK)
@@ -1393,7 +1410,8 @@ static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
     for (uint32_t i = 0u; i < len; i++)
     {
         /* Write a byte */
-        HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i, buf[i]);
+        HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i,
+                write_buf[i]);
         if (HALCode != HAL_OK)
         {
             HAL_FLASH_Lock();
@@ -1569,6 +1587,34 @@ static cbl_err_code_t cmdHandle_Exit (parser_t * phPrsr)
     /* Send response */
     eCode = sendToHost(TXT_SUCCESS, strlen(TXT_SUCCESS));
     return eCode;
+}
+
+/**
+ * @brief               Checks if CRC value of input buffer is OK
+ *                      CRC parameters:
+ *                          Polynomial length: 32
+ *                          CRC-32 polynomial: 0x4C11DB7
+ *                                 Init value: 0xFFFFFFFF
+ *
+ *
+ * @param write_buf[in] Buffer with 32 bit CRC in the end
+ * @param len[in]       Length of write_buf
+ * @return              CBL_ERR_CRC_WRONG if invalid CRC, otherwise CBL_ERR_OK
+ */
+static cbl_err_code_t checkCRCValue (uint32_t * write_buf, uint32_t len)
+{
+
+    uint32_t expected_CRC = 0;
+    /* NOTE: Zero as write_buf shall always
+     be divisible polynomial by
+     the used CRC polynomial */
+
+    if (HAL_CRC_Calculate( &hcrc, write_buf, len) != expected_CRC)
+    {
+        return CBL_ERR_CRC_WRONG;
+    }
+
+    return CBL_ERR_OK;
 }
 
 /**

@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include "usart.h"
+#include "crc.h"
 #include "dma.h"
  
 #define CBL_VERSION "v0.9"
@@ -67,7 +68,8 @@ typedef enum
     CBL_ERR_INV_PARAM, /*!< Invalid function parameter */
     CBL_ERR_NOT_DIG, /*!< String contains non digit characters  */
     CBL_ERR_UNSUP_BASE, /*!< Unsupported number base */
-    CBL_ERR_1ST_NOT_ZERO /*!< First char must be '0' */
+    CBL_ERR_1ST_NOT_ZERO, /*!< First char must be '0' */
+    CBL_ERR_CRC_WRONG /*!< CRC calculation on received bytes is wrong */
 } cbl_err_code_t;
 
 void CBL_Run (void);
