@@ -144,7 +144,7 @@ Parameters:
  CRC settings: 
 
    - Polynomial length: 32
-   - CRC-32 polynomial: 0x4C11DB7
+   - CRC-32 polynomial: 0x4C11DB7 (Ethernet)
    - Init value: 0xFFFFFFFF
 
 Execute command: 
