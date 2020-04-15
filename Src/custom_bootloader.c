@@ -130,7 +130,7 @@ static cbl_err_code_t cmdHandle_MemRead (parser_t * phPrsr);
 static cbl_err_code_t cmdHandle_GetWriteProt (parser_t * phPrsr);
 static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr);
 static cbl_err_code_t cmdHandle_Exit (parser_t * phPrsr);
-static cbl_err_code_t checkCRCValue (uint32_t * write_buf, uint32_t len);
+static cbl_err_code_t checkCRCValue (uint8_t * write_buf, uint32_t len);
 static cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,
         uint8_t base);
 static cbl_err_code_t verifyDigitsOnly (const char * str, size_t i,
@@ -884,7 +884,7 @@ static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
         case CBL_ERR_HAL_WRITE:
         {
             char msg[] = "\r\nERROR: Error while writing to flash."
-                    " Retry last message.\r\ n";
+                    " Retry last message.\r\n";
 
             INFO("Error while writing to flash on HAL level\r\n");
             sendToHost(msg, strlen(msg));
@@ -1336,7 +1336,7 @@ static cbl_err_code_t cmdHandle_FlashErase (parser_t * phPrsr)
 static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    uint32_t write_buf[FLASH_WRITE_SZ] = { 0 };
+    uint8_t write_buf[FLASH_WRITE_SZ] = { 0 };
     char *charStart = NULL;
     char *charLen = NULL;
     uint32_t start;
@@ -1386,7 +1386,8 @@ static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
     sendToHost(TXT_RESP_FLASH_WRITE_READY, strlen(TXT_RESP_FLASH_WRITE_READY));
 
     /* Request 'len' bytes */
-    eCode = recvFromHost(write_buf, len);
+    eCode = recvFromHost((char *)write_buf, len); /*WARNING: Assumes only
+     ASCII 0-127, and char length equals 8 */
     ERR_CHECK(eCode);
 
     while (gRxCmdCntr != 1)
@@ -1398,9 +1399,10 @@ static cbl_err_code_t cmdHandle_FlashWrite (parser_t * phPrsr)
     LED_ON(BLUE);
 
     /* Check CRC value */
+#if 0
     eCode = checkCRCValue(write_buf, len);
     ERR_CHECK(eCode);
-
+#endif
     /* Unlock flash */
     if (HAL_FLASH_Unlock() != HAL_OK)
     {
@@ -1594,23 +1596,25 @@ static cbl_err_code_t cmdHandle_Exit (parser_t * phPrsr)
  * @brief               Checks if CRC value of input buffer is OK
  *                      CRC parameters:
  *                          Polynomial length: 32
- *                          CRC-32 polynomial: 0x4C11DB7
+ *                          CRC-32 polynomial: 0x4C11DB7 (Ethernet)
  *                                 Init value: 0xFFFFFFFF
+ *                                     XOROut: no
  *
  *
  * @param write_buf[in] Buffer with 32 bit CRC in the end
  * @param len[in]       Length of write_buf
  * @return              CBL_ERR_CRC_WRONG if invalid CRC, otherwise CBL_ERR_OK
  */
-static cbl_err_code_t checkCRCValue (uint32_t * write_buf, uint32_t len)
+static cbl_err_code_t checkCRCValue (uint8_t * write_buf, uint32_t len)
 {
 
     uint32_t expected_CRC = 0;
-    /* NOTE: Zero as write_buf shall always
-     be divisible polynomial by
+    /* NOTE: Zero as write_buf shall always be divisible polynomial by
      the used CRC polynomial */
+    uint32_t poly[2] = {0x12345678, 0xDF8A8A2B};
+    uint32_t calc_CRC = HAL_CRC_Calculate( &hcrc, (uint32_t *) poly, 2);
 
-    if (HAL_CRC_Calculate( &hcrc, write_buf, len) != expected_CRC)
+    if (calc_CRC != expected_CRC)
     {
         return CBL_ERR_CRC_WRONG;
     }
