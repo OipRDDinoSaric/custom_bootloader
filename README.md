@@ -134,22 +134,29 @@ Response:
    
 <a name="cmd_flash-write"> </a>
 ####  [flash-write](#cmd_flash-write)—Writes to flash, returns \r\nready\r\n when ready to receive bytes
+
 Parameters:
 
  - start - Starting address in hex format (e.g. 0x12345678), 0x can be omitted
      
  - count - Number of bytes to write. Maximum bytes: 1024
+ 
+ CRC settings: 
+
+   - Polynomial length: 32
+   - CRC-32 polynomial: 0x4C11DB7
+   - Init value: 0xFFFFFFFF
 
 Execute command: 
 
-    > flash-write start=0x87654321 count=5  
+    > flash-write start=0x87654321 count=64  
 Response: 
 
     ready
 
 Send bytes:
 
-    <5 bytes>
+    <64 bytes, last 4 bytes CRC calculation>
     
 Response: 
 
