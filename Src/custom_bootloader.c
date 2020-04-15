@@ -80,7 +80,7 @@ typedef enum
 {
     STATE_OPER, /*!< Operational state */
     STATE_ERR, /*!< Error state */
-    STAT_EXIT /*!< Deconstructor state */
+    STATE_EXIT /*!< Deconstructor state */
 } sys_states_t;
 
 typedef enum
@@ -272,7 +272,7 @@ static cbl_err_code_t runShellSystem (void)
                 }
                 else if (true == gIsExitReq)
                 {
-                    nextState = STAT_EXIT;
+                    nextState = STATE_EXIT;
                 }
                 else
                 {
@@ -288,7 +288,7 @@ static cbl_err_code_t runShellSystem (void)
                 /* Switch state */
                 if (eCode != CBL_ERR_OK)
                 {
-                    nextState = STAT_EXIT;
+                    nextState = STATE_EXIT;
                 }
                 else
                 {
@@ -297,7 +297,7 @@ static cbl_err_code_t runShellSystem (void)
             }
             break;
 
-            case STAT_EXIT:
+            case STATE_EXIT:
             {
                 /* Deconstructor */
                 char bye[] = "Exiting\r\n\r\n";
