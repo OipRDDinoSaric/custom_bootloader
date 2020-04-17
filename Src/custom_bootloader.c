@@ -162,6 +162,11 @@ void CBL_Run ()
 }
 
 // \f - new page
+
+/**
+ * @brief   Notifies the user that bootloader started and initializes
+ *          peripherals
+ */
 static void shellInit (void)
 {
     char bufWelcome[] = ""
@@ -206,11 +211,10 @@ static void shellInit (void)
  *              the user application.
  *
  * @attention   DO NOT FORGET: In user application VECT_TAB_OFFSET set to the
- *          offset of user application
- *          from the start of the flash.
+ *          offset of user application from the start of the flash.
  *          e.g. If our application starts in the 2nd sector we would write
  *          #define VECT_TAB_OFFSET 0x8000.
- *          VECT_TAB_OFFSET is located in system_Stm32f4xx.c
+ *          VECT_TAB_OFFSET is located in system_stm32f4xx.c
  *
  * @return  Procesor never returns from this application
  */
@@ -245,7 +249,9 @@ static void runUserApp (void)
 
 // \f - new page
 /**
- * @brief   Runs the shell for the bootloader.
+ * @brief   Runs the shell for the bootloader until unrecoverable error happens
+ *          or exit is requested
+ *
  * @return  CBL_ERR_NO when no error, else returns an error code.
  */
 static cbl_err_code_t runShellSystem (void)
@@ -326,6 +332,10 @@ static cbl_err_code_t runShellSystem (void)
 }
 
 // \f - new page
+/**
+ * @brief   Function that runs in normal operation, waits for new command from
+ *          the host and processes it
+ */
 static cbl_err_code_t sysState_Operation (void)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
@@ -354,10 +364,13 @@ static cbl_err_code_t sysState_Operation (void)
 
 // \f - new page
 /**
- * @brief           Block thread until new command is received from host
+ * @brief           Block thread until new command is received from host.
+ *                  New command is considered received when CR LF is received
+ *                  or buffer for command overflows
+ *
  * @param buf[out]  Buffer for command
+ *
  * @param len[in]   Length of buf
- * @return
  */
 static cbl_err_code_t waitForCmd (char * buf, size_t len)
 {
@@ -413,21 +426,19 @@ static cbl_err_code_t waitForCmd (char * buf, size_t len)
 
 // \f - new page
 /**
- * @brief           Parses a command into CBL_Parser_t. Command's form is as
+ * @brief           Parses a command into parser_t. Command's form is as
  *                  follows: somecmd pname1=pval1 pname2=pval2
  *
  * @note            This function is destructive to input cmd, as it replaces
- *                  all ' ' and '='
- *                  with NULL terminator and transform all to lower case
+ *                  all ' ' and '=' with NULL terminator and transform every
+ *                  character to lower case
  *
  * @param cmd[in]   NULL terminated string containing command without CR LF,
- *                  parser changes it to lower case
+ *                  parser changes it
  *
  * @param len[in]   Length of string contained in cmd
  *
  * @param p[out]    Function assumes empty parser p on entrance
- *
- * @return
  */
 static cbl_err_code_t parser_Run (char * cmd, size_t len, parser_t * phPrsr)
 {
@@ -479,14 +490,21 @@ static cbl_err_code_t parser_Run (char * cmd, size_t len, parser_t * phPrsr)
 // \f - new page
 /**
  * @brief           Gets value from a parameter
+ *
  * @param p         parser
+ *
  * @param name      Name of a parameter
+ *
  * @param lenName   Name length
- * @return  Pointer to the value
+ *
+ * @return  Pointer to the value, when no parameter it returns NULL
  */
 static char *parser_GetVal (parser_t * phPrsr, char * name, size_t lenName)
 {
     size_t lenArgName;
+
+    if(phPrsr == NULL || name == NULL || lenName == 0)
+        return NULL;
 
     /* Walk through all the parameters */
     for (uint32_t iii = 0u; iii < phPrsr->numOfArgs; iii++)
@@ -594,11 +612,21 @@ static cbl_err_code_t enumCmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
 
     if (CBL_ERR_OK == eCode && CMD_UNDEF == *pCmdCode)
+    {
         eCode = CBL_ERR_CMD_UNDEF;
+    }
+
     return eCode;
 }
 
 // \f - new page
+/**
+ * @brief               Handler for all defined commands
+ *
+ * @param cmdCode[in]   Enumerator for the commands
+ *
+ * @param phPrsr[in]    Handle of the parser containing parameters
+ */
 static cbl_err_code_t handleCmd (cmd_t cmdCode, parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
@@ -685,11 +713,19 @@ static cbl_err_code_t handleCmd (cmd_t cmdCode, parser_t * phPrsr)
         }
         break;
     }
+
     DEBUG("Responded\r\n");
     return eCode;
 }
 
 // \f - new page
+/**
+ * @brief           Sends a message to the host over defined output
+ *
+ * @param buf[in]   Message to send
+ *
+ * @param len[in]   Length of buf
+ */
 static cbl_err_code_t sendToHost (const char * buf, size_t len)
 {
     if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY)
@@ -706,8 +742,6 @@ static cbl_err_code_t sendToHost (const char * buf, size_t len)
 /**
  * @brief Nonblocking receive of 'len' characters from host.
  *        HAL_UART_RxCpltCallbackUART is triggered when done
- *
- * @return Error code
  */
 static cbl_err_code_t recvFromHost (char * buf, size_t len)
 {
@@ -721,6 +755,9 @@ static cbl_err_code_t recvFromHost (char * buf, size_t len)
     }
 }
 
+/**
+ * @brief Stops waiting of the command
+ */
 static cbl_err_code_t stopRecvFromHost (void)
 {
     if (HAL_UART_AbortReceive(pUARTCmd) == HAL_OK)
@@ -734,6 +771,11 @@ static cbl_err_code_t stopRecvFromHost (void)
 }
 
 // \f - new page
+/**
+ * @brief           Handler for all errors
+ *
+ * @param eCode[in] Error code that happened
+ */
 static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
 {
     DEBUG("Started\r\n");
@@ -976,6 +1018,11 @@ static cbl_err_code_t sysState_Error (cbl_err_code_t eCode)
     return eCode;
 }
 
+/**
+ * @brief           Interrupt when receiveing is done from UART
+ *
+ * @param huart[in] Handle for UART that triggered the interrupt
+ */
 void HAL_UART_RxCpltCallback (UART_HandleTypeDef * huart)
 {
     if (huart == pUARTCmd)
@@ -1210,7 +1257,7 @@ static cbl_err_code_t cmdHandle_JumpTo (parser_t * phPrsr)
 
 // \f - new page
 /**
- * @note    Sending sect=64 erases whole flash
+ * @note
  */
 static cbl_err_code_t cmdHandle_FlashErase (parser_t * phPrsr)
 {
@@ -1598,11 +1645,14 @@ static cbl_err_code_t cmdHandle_Exit (parser_t * phPrsr)
  *                          Polynomial length: 32
  *                          CRC-32 polynomial: 0x4C11DB7 (Ethernet)
  *                                 Init value: 0xFFFFFFFF
- *                                     XOROut: no
- *
+ *                                     XOROut: false
+ *                                      RefIn: false
+ *                                     RefOut: false
  *
  * @param write_buf[in] Buffer with 32 bit CRC in the end
+ *
  * @param len[in]       Length of write_buf
+ *
  * @return              CBL_ERR_CRC_WRONG if invalid CRC, otherwise CBL_ERR_OK
  */
 static cbl_err_code_t checkCRCValue (uint8_t * write_buf, uint32_t len)
@@ -1647,6 +1697,18 @@ static cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,
     return eCode;
 }
 
+/**
+ * @brief           Verify if the string contains only digit characters
+ *                  (or x on index 1 for hex numbers). Supports base 16 and
+ *                  base 10.
+ *
+ * @param str[in]   String to test
+ *
+ * @param len[in]   Length of str
+ *
+ * @param base[in]  Number base. Shall be 10 or 16.
+ * @return
+ */
 static cbl_err_code_t verifyDigitsOnly (const char * str, size_t len,
         uint8_t base)
 {
@@ -1687,7 +1749,8 @@ static cbl_err_code_t verifyDigitsOnly (const char * str, size_t len,
 // \f - new page
 /**
  * @brief   Verifies address is in jumpable region
- * @note    Jumping to peripheral memory locations not permitted
+ *
+ * @note    Jumping to peripheral memory locations is NOT permitted
  */
 static cbl_err_code_t verifyJumpAddress (uint32_t addr)
 {
