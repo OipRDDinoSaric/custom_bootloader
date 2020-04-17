@@ -35,16 +35,6 @@ extern "C"
 /* USER CODE BEGIN Includes */
 #include <stdbool.h>
 #include <stdio.h>
-#include "custom_bootloader.h"
-
-#define ERR_CHECK(x)    do                          \
-                        {                           \
-                            if((x) != CBL_ERR_OK)   \
-                            {                       \
-                              return (x);           \
-                            }                       \
-                        }                           \
-                        while(0)
 
 /* Colors: RED, ORANGE, GREEN and BLUE */
 #define LED_ON(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,               \

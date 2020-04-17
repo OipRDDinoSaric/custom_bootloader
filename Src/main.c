@@ -27,9 +27,12 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "custom_bootloader.h"
+
 #if LOG_EN == true
 extern void initialise_monitor_handles(void);
 #endif
+
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -71,13 +74,12 @@ void SystemClock_Config (void);
 int main (void)
 {
     /* USER CODE BEGIN 1 */
-
     /* USER CODE END 1 */
 
     /* MCU Configuration--------------------------------------------------------*/
 
     /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-    HAL_Init();
+     HAL_Init();
 
     /* USER CODE BEGIN Init */
 
@@ -101,7 +103,9 @@ int main (void)
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
     CBL_Run();
+
     /* This shall never be reached */
+
     /* USER CODE END 2 */
 
     /* Infinite loop */
