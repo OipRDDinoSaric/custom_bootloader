@@ -7,15 +7,11 @@
  * @note    Written according to BARR-C:2018 coding standard
  *          Exceptions:
  *              - 3.2 a, c  - Eclipse formater doesn't support
- *              - 6.1 e     - Functions can contain uppercase letter!
- *              - 6.1 g     - Upercase letter can separate words
  *              - 6.3 b iv. - ERR_CHECK() macro has return keyword
  *              - 7.1 f     - Variables contain uppercase letters!
  *              - 7.1 h     - Uppercase letter can seperate words
- *              - 7.1 m     - boolean begins with is, e.g. isExample
- *
+ *              - 7.1 m     - Boolean begins with is, e.g. isExample
  */
-
 #include "custom_bootloader.h"
 #include <cbl_common.h>
 #include <stdbool.h>
@@ -25,8 +21,8 @@
 #include "usart.h"
 #include "crc.h"
 #include "dma.h"
-#include "cbl_cmds_memory.h"
-#include "cbl_cmds_opt_bytes.h"
+//#include "cbl_cmds_memory.h"
+//#include "cbl_cmds_opt_bytes.h"
 
 #define CMD_BUF_SZ 128 /*!< Size of a new command buffer */
 
@@ -395,22 +391,17 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     {
         *pCmdCode = CMD_CID;
     }
+    else if (len == strlen(TXT_CMD_EXIT)
+            && strncmp(buf, TXT_CMD_EXIT, strlen(TXT_CMD_EXIT)) == 0)
+    {
+        *pCmdCode = CMD_EXIT;
+    }
+#ifdef CBL_CMDS_OPT_BYTES_H
     else if (len == strlen(TXT_CMD_GET_RDP_LVL)
             && strncmp(buf, TXT_CMD_GET_RDP_LVL, strlen(TXT_CMD_GET_RDP_LVL))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_GET_RDP_LVL;
-    }
-    else if (len == strlen(TXT_CMD_JUMP_TO)
-            && strncmp(buf, TXT_CMD_JUMP_TO, strlen(TXT_CMD_JUMP_TO)) == 0)
-    {
-        *pCmdCode = CMD_JUMP_TO;
-    }
-    else if (len == strlen(TXT_CMD_FLASH_ERASE)
-            && strncmp(buf, TXT_CMD_FLASH_ERASE, strlen(TXT_CMD_FLASH_ERASE))
-                    == 0)
-    {
-        *pCmdCode = CMD_FLASH_ERASE;
     }
     else if (len == strlen(TXT_CMD_EN_WRITE_PROT)
             && strncmp(buf, TXT_CMD_EN_WRITE_PROT,
@@ -424,6 +415,26 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     {
         *pCmdCode = CMD_DIS_WRITE_PROT;
     }
+    else if (len == strlen(TXT_CMD_READ_SECT_PROT_STAT)
+            && strncmp(buf, TXT_CMD_READ_SECT_PROT_STAT,
+                    strlen(TXT_CMD_READ_SECT_PROT_STAT)) == 0)
+    {
+        *pCmdCode = CMD_READ_SECT_PROT_STAT;
+    }
+#endif /* CBL_CMDS_OPT_BYTES_H */
+#ifdef CBL_CMDS_MEMORY_H
+    else if (len == strlen(TXT_CMD_JUMP_TO)
+            && strncmp(buf, TXT_CMD_JUMP_TO, strlen(TXT_CMD_JUMP_TO)) == 0)
+    {
+        *pCmdCode = CMD_JUMP_TO;
+    }
+    else if (len == strlen(TXT_CMD_FLASH_ERASE)
+            && strncmp(buf, TXT_CMD_FLASH_ERASE, strlen(TXT_CMD_FLASH_ERASE))
+            == 0)
+    {
+        *pCmdCode = CMD_FLASH_ERASE;
+    }
+
     else if (len == strlen(TXT_CMD_MEM_READ)
             && strncmp(buf, TXT_CMD_MEM_READ, strlen(TXT_CMD_MEM_READ)) == 0)
     {
@@ -431,20 +442,14 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_WRITE)
             && strncmp(buf, TXT_CMD_FLASH_WRITE, strlen(TXT_CMD_FLASH_WRITE))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_FLASH_WRITE;
     }
-    else if (len == strlen(TXT_CMD_READ_SECT_PROT_STAT)
-            && strncmp(buf, TXT_CMD_READ_SECT_PROT_STAT,
-                    strlen(TXT_CMD_READ_SECT_PROT_STAT)) == 0)
+#endif /* CBL_CMDS_MEMORY_H */
+    else
     {
-        *pCmdCode = CMD_READ_SECT_PROT_STAT;
-    }
-    else if (len == strlen(TXT_CMD_EXIT)
-            && strncmp(buf, TXT_CMD_EXIT, strlen(TXT_CMD_EXIT)) == 0)
-    {
-        *pCmdCode = CMD_EXIT;
+        *pCmdCode = CMD_UNDEF;
     }
 
     if (CBL_ERR_OK == eCode && CMD_UNDEF == *pCmdCode)
@@ -487,59 +492,62 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         }
         break;
 
-        case CMD_GET_RDP_LVL:
-        {
-            eCode = cmd_get_rdp_lvl(phPrsr);
-        }
-        break;
-
-        case CMD_JUMP_TO:
-        {
-            eCode = cmd_jump_to(phPrsr);
-        }
-        break;
-
-        case CMD_FLASH_ERASE:
-        {
-            eCode = cmd_flash_erase(phPrsr);
-        }
-        break;
-
-        case CMD_EN_WRITE_PROT:
-        {
-            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
-        }
-        break;
-
-        case CMD_DIS_WRITE_PROT:
-        {
-            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
-        }
-        break;
-
-        case CMD_MEM_READ:
-        {
-            eCode = cmd_mem_read(phPrsr);
-        }
-        break;
-
-        case CMD_READ_SECT_PROT_STAT:
-        {
-            eCode = cmd_get_write_prot(phPrsr);
-        }
-        break;
-
-        case CMD_FLASH_WRITE:
-        {
-            eCode = cmd_flash_write(phPrsr);
-        }
-        break;
-
         case CMD_EXIT:
         {
             eCode = cmd_exit(phPrsr);
         }
         break;
+
+#ifdef CBL_CMDS_OPT_BYTES_H
+            case CMD_GET_RDP_LVL:
+            {
+                eCode = cmd_get_rdp_lvl(phPrsr);
+            }
+            break;
+
+            case CMD_EN_WRITE_PROT:
+            {
+                eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
+            }
+            break;
+
+            case CMD_DIS_WRITE_PROT:
+            {
+                eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
+            }
+            break;
+
+            case CMD_READ_SECT_PROT_STAT:
+            {
+                eCode = cmd_get_write_prot(phPrsr);
+            }
+            break;
+#endif /* CBL_CMDS_OPT_BYTES_H */
+#ifdef CBL_CMDS_MEMORY_H
+            case CMD_JUMP_TO:
+            {
+                eCode = cmd_jump_to(phPrsr);
+            }
+            break;
+
+            case CMD_FLASH_ERASE:
+            {
+                eCode = cmd_flash_erase(phPrsr);
+            }
+            break;
+
+            case CMD_MEM_READ:
+            {
+                eCode = cmd_mem_read(phPrsr);
+            }
+            break;
+
+            case CMD_FLASH_WRITE:
+            {
+                eCode = cmd_flash_write(phPrsr);
+            }
+            break;
+#endif /* CBL_CMDS_MEMORY_H */
 
         case CMD_UNDEF:
             /* No break */
@@ -862,11 +870,39 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             "bootloader" CRLF CRLF
             "- " TXT_CMD_HELP " | Makes life easier" CRLF CRLF
             "- " TXT_CMD_CID " | Gets chip identification number" CRLF CRLF
-            "- " TXT_CMD_GET_RDP_LVL " |  Read protection. Used to protect the"
+#ifdef CBL_CMDS_OPT_BYTES_H
+            "- "
+            TXT_CMD_GET_RDP_LVL
+            " |  Read protection. Used to protect the"
             " software code stored in Flash memory."
             " Ref. man. p. 93" CRLF CRLF
             "- "
-            TXT_CMD_JUMP_TO
+            TXT_CMD_EN_WRITE_PROT
+            " | Enables write protection per sector,"
+            " as selected with \""
+            TXT_PAR_EN_WRITE_PROT_MASK
+            "\"." CRLF
+            "     "
+            TXT_PAR_EN_WRITE_PROT_MASK
+            " - Mask in hex form for sectors"
+            " where LSB corresponds to sector 0." CRLF CRLF
+            "- "
+            TXT_CMD_DIS_WRITE_PROT
+            " | Disables write protection per "
+            "sector, as selected with \""
+            TXT_PAR_EN_WRITE_PROT_MASK
+            "\"." CRLF
+            "     "
+            TXT_PAR_EN_WRITE_PROT_MASK
+            " - Mask in hex form for sectors"
+            " where LSB corresponds to sector 0." CRLF CRLF
+            "- "
+            TXT_CMD_READ_SECT_PROT_STAT
+            " | Returns bit array of sector "
+            "write protection. LSB corresponds to sector 0. " CRLF CRLF
+#endif
+#ifdef CBL_CMDS_MEMORY_H
+            "- " TXT_CMD_JUMP_TO
             " | Jumps to a requested address" CRLF
             "    "
             TXT_PAR_JUMP_TO_ADDR
@@ -879,32 +915,17 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             TXT_PAR_FLASH_ERASE_TYPE
             " - Defines type of flash erase."
             " \""
-            TXT_PAR_FLASH_ERASE_TYPE_MASS
-            "\" erases all sectors, "
-            "\""
-            TXT_PAR_FLASH_ERASE_TYPE_SECT
-            "\" erases only selected "
-            "sectors." CRLF
-            "    "
-            TXT_PAR_FLASH_ERASE_SECT
-            " - First sector to erase. "
-            "Bootloader is on sectors 0, 1 and 2."
-            " Not needed with mass erase." CRLF
-            "    "
-            TXT_PAR_FLASH_ERASE_COUNT
-            " - Number of sectors to erase. "
-            "Not needed with mass erase." CRLF CRLF
-            "- "
-            TXT_CMD_FLASH_WRITE
-            " | Writes to flash, returns "
+            TXT_PAR_FLASH_ERASE_TYPE_MASS "\" erases all sectors, \""
+            TXT_PAR_FLASH_ERASE_TYPE_SECT "\" erases only selected sectors." CRLF
+            "    " TXT_PAR_FLASH_ERASE_SECT " - First sector to erase. "
+            "Bootloader is on sectors 0, 1 and 2. Not needed with mass erase." CRLF
+            "    " TXT_PAR_FLASH_ERASE_COUNT
+            " - Number of sectors to erase. Not needed with mass erase." CRLF CRLF
+            "- " TXT_CMD_FLASH_WRITE " | Writes to flash, returns "
             TXT_RESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
-            "     "
-            TXT_PAR_FLASH_WRITE_START
-            " - Starting address in hex "
+            "     " TXT_PAR_FLASH_WRITE_START " - Starting address in hex "
             "format (e.g. 0x12345678), 0x can be omitted."CRLF
-            "     "
-            TXT_PAR_FLASH_WRITE_COUNT
-            " - Number of bytes to write. "
+            "     " TXT_PAR_FLASH_WRITE_COUNT " - Number of bytes to write. "
             "Maximum bytes: "
             TXT_FLASH_WRITE_SZ
             CRLF CRLF
@@ -919,16 +940,7 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             TXT_PAR_FLASH_WRITE_COUNT
             " - Number of bytes to read."
             CRLF CRLF
-            "- " TXT_CMD_EN_WRITE_PROT " | Enables write protection per sector,"
-            " as selected with \"" TXT_PAR_EN_WRITE_PROT_MASK "\"." CRLF
-            "     " TXT_PAR_EN_WRITE_PROT_MASK " - Mask in hex form for sectors"
-            " where LSB corresponds to sector 0." CRLF CRLF
-            "- " TXT_CMD_DIS_WRITE_PROT " | Disables write protection per "
-            "sector, as selected with \"" TXT_PAR_EN_WRITE_PROT_MASK "\"." CRLF
-            "     " TXT_PAR_EN_WRITE_PROT_MASK " - Mask in hex form for sectors"
-            " where LSB corresponds to sector 0." CRLF CRLF
-            "- " TXT_CMD_READ_SECT_PROT_STAT " | Returns bit array of sector "
-            "write protection. LSB corresponds to sector 0. " CRLF CRLF
+#endif /* CBL_CMDS_MEMORY_H */
             "- "TXT_CMD_EXIT " | Exits the bootloader and starts the user "
             "application" CRLF CRLF
             "********************************************************" CRLF

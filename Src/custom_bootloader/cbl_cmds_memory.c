@@ -7,7 +7,7 @@
 #include "main.h"
 #include "crc.h"
 
-static cbl_err_code_t checkCRCValue (uint8_t * write_buf, uint32_t len);
+static cbl_err_code_t check_crc_value (uint8_t * write_buf, uint32_t len);
 
 /**
  * @brief   Jumps to a requested address.
@@ -261,7 +261,7 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
 
     /* Check CRC value */
 #if 0
-    eCode = checkCRCValue(write_buf, len);
+    eCode = check_crc_value(write_buf, len);
     ERR_CHECK(eCode);
 #endif
     /* Unlock flash */
@@ -354,7 +354,7 @@ cbl_err_code_t cmd_mem_read (parser_t * phPrsr)
  *
  * @return              CBL_ERR_CRC_WRONG if invalid CRC, otherwise CBL_ERR_OK
  */
-static cbl_err_code_t checkCRCValue (uint8_t * write_buf, uint32_t len)
+static cbl_err_code_t check_crc_value (uint8_t * write_buf, uint32_t len)
 {
     uint32_t expected_CRC = 0;
     /* NOTE: Zero as write_buf shall always be divisible polynomial by
