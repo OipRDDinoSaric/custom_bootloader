@@ -211,7 +211,7 @@ Parameters:
 
 Execute command: 
 
-    > cmd_get-write-prot
+    > get-write-prot
 Response: 
 
     0b100000000010
