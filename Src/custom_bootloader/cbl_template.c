@@ -2,13 +2,12 @@
  *
  * @brief A description of the module’s purpose.
  */
-#include <stdint.h>
+#include <cbl_template.h>
 #include <stdbool.h>
 #include "cbl_common.h"
-#include "cbl_template.h"
 
-/*!
- * @brief Identify the larger of two 8-bit integers.
+/**
+ * @brief   Identify the larger of two 8-bit integers.
  *
  * @param[in] num1 The first number to be compared.
  * @param[in] num2 The second number to be compared.
