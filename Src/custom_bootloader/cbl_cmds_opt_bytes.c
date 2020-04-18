@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
-#include "main.h"
 #include "cbl_common.h"
 #include "cbl_cmds_opt_bytes.h"
 

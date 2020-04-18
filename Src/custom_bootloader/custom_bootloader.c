@@ -346,7 +346,7 @@ static cbl_err_code_t wait_for_cmd (char * buf, size_t len)
     while (gRxCmdCntr < len)
     {
         /* Receive one char from host */
-        eCode = recv_from_host(buf + iii, 1);
+        eCode = recv_from_host((uint8_t *)buf + iii, 1);
         ERR_CHECK(eCode);
 
         while (iii != (gRxCmdCntr - 1))
@@ -850,7 +850,25 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             eCode = CBL_ERR_OK;
         }
         break;
+        case CBL_ERR_INV_CKSUM:
+        {
+            char msg[] = "\r\nERROR: Checksum failed. Retry send\r\n";
 
+            WARNING("Invalid checksum of received files\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+        case CBL_ERR_CRC_LEN:
+        {
+            char msg[] = "\r\nERROR: Length for CRC32 must be "
+                    "divisible by 4 \r\n";
+
+            WARNING("User netered invalid length for CRC32\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
         default:
         {
             ERROR("Unhandled error happened\r\n")

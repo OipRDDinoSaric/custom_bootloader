@@ -141,9 +141,9 @@ cbl_err_code_t send_to_host (const char * buf, size_t len)
  * @brief Nonblocking receive of 'len' characters from host.
  *        HAL_UART_RxCpltCallbackUART is triggered when done
  */
-cbl_err_code_t recv_from_host (char * buf, size_t len)
+cbl_err_code_t recv_from_host (uint8_t * buf, size_t len)
 {
-    if (HAL_UART_Receive_DMA(pUARTCmd, (uint8_t *)buf, len) == HAL_OK)
+    if (HAL_UART_Receive_DMA(pUARTCmd, buf, len) == HAL_OK)
     {
         return CBL_ERR_OK;
     }

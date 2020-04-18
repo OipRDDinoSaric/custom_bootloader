@@ -33,49 +33,7 @@ extern "C"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include <stdbool.h>
-#include <stdio.h>
 
-/* Colors: RED, ORANGE, GREEN and BLUE */
-#define LED_ON(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,               \
-                                            LED_##COLOR##_Pin, GPIO_PIN_SET);
-#define LED_OFF(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,              \
-                                            LED_##COLOR##_Pin, GPIO_PIN_RESET);
-
-#ifndef NDEBUG
-/**
- * Tutorial for semihosting to Console:
- * System Workbench for STM32 -> Help -> Help Contents -> Semihosting
- */
-#   define INFO(f_, ...) printf("INFO:%s:", __func__); \
-						 printf((f_), ##__VA_ARGS__)
-
-#   define DEBUG(f_, ...) printf("DEBG:%s:", __func__); \
-						  printf((f_), ##__VA_ARGS__)
-
-#   define WARNING(f_, ...) printf("WARN:%s:", __func__); \
-                            printf((f_), ##__VA_ARGS__)
-
-#   define ERROR(f_, ...) printf("ERRO:%s:%d:%s:", __FILE__, \
-                                        __LINE__, __func__); \
-						  printf((f_), ##__VA_ARGS__)
-
-#   define ASSERT(expr, f_, ...)		\
-      do {								\
-        if (!(expr)) {					\
-          ERROR((f_), ##__VA_ARGS__);	\
-          while(1);						\
-        }								\
-      } while (0)
-#else /* #ifndef NDEBUG */
-
-#   define INFO(f_, ...);
-#   define DEBUG(f_, ...);
-#   define WARNING(f_, ...);
-#   define ERROR(f_, ...);
-#   define ASSERT(expr, f_, ...);
-
-#endif /* #ifndef NDEBUG */
 
 /* Used when the variable is a output of a function */
 

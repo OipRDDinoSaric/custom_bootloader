@@ -6,7 +6,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "main.h"
 #include "cbl_cmds_template.h"
 
 /**

@@ -47,7 +47,9 @@ typedef enum
     CBL_ERR_UNSUP_BASE, /*!< Unsupported number base */
     CBL_ERR_1ST_NOT_ZERO, /*!< First char must be '0' */
     CBL_ERR_CRC_WRONG, /*!< CRC calculation on received bytes is wrong */
-    CBL_ERR_TEMP_NOT_VAL1 /*!< Explanation of error. DON'T FORGET THE HANDLER */
+    CBL_ERR_TEMP_NOT_VAL1, /*!< Explanation of error. DON'T FORGET HANDLER */
+    CBL_ERR_INV_CKSUM, /*!< Invalid checksum for received data */
+    CBL_ERR_CRC_LEN /*!< Invalid length for CRC check */
 } cbl_err_code_t;
 
 void CBL_run_system (void);

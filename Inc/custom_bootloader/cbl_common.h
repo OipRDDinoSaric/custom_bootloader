@@ -5,12 +5,52 @@
  */
 #ifndef CBL_CMDS_COMMON_H
 #define CBL_CMDS_COMMON_H
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <custom_bootloader.h>
-#include "stm32f4xx.h"
+#include "main.h"
+
+/* Colors: RED, ORANGE, GREEN and BLUE */
+#define LED_ON(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,               \
+                                            LED_##COLOR##_Pin, GPIO_PIN_SET);
+#define LED_OFF(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,              \
+                                            LED_##COLOR##_Pin, GPIO_PIN_RESET);
+
+#ifndef NDEBUG
+/**
+ * Tutorial for semihosting to Console:
+ * System Workbench for STM32 -> Help -> Help Contents -> Semihosting
+ */
+#   define INFO(f_, ...) printf("INFO:%s:", __func__); \
+                         printf((f_), ##__VA_ARGS__)
+
+#   define DEBUG(f_, ...) printf("DEBG:%s:", __func__); \
+                          printf((f_), ##__VA_ARGS__)
+
+#   define WARNING(f_, ...) printf("WARN:%s:", __func__); \
+                            printf((f_), ##__VA_ARGS__)
+
+#   define ERROR(f_, ...) printf("ERRO:%s:%d:%s:", __FILE__, \
+                                        __LINE__, __func__); \
+                          printf((f_), ##__VA_ARGS__)
+
+#   define ASSERT(expr, f_, ...)        \
+      do {                              \
+        if (!(expr)) {                  \
+          ERROR((f_), ##__VA_ARGS__);   \
+          while(1);                     \
+        }                               \
+      } while (0)
+#else /* #ifndef NDEBUG */
+
+#   define INFO(f_, ...);
+#   define DEBUG(f_, ...);
+#   define WARNING(f_, ...);
+#   define ERROR(f_, ...);
+#   define ASSERT(expr, f_, ...);
+
+#endif /* #ifndef NDEBUG */
 
 #define MAX_ARGS 8 /*!< Maximum number of arguments in an input cmd */
 
@@ -68,7 +108,7 @@ cbl_err_code_t parser_run (char * cmd, size_t len, parser_t * phPrsr);
 char *parser_get_val (parser_t * phPrsr, char * name, size_t lenName);
 
 cbl_err_code_t send_to_host (const char * buf, size_t len);
-cbl_err_code_t recv_from_host (char * buf, size_t len);
+cbl_err_code_t recv_from_host (uint8_t * buf, size_t len);
 cbl_err_code_t stop_recv_from_host (void);
 
 cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,

@@ -4,10 +4,10 @@
  */
 #include "cbl_cmds_memory.h"
 #include "string.h"
-#include "main.h"
-#include "crc.h"
+#include "cbl_checksum.h"
 
-static cbl_err_code_t check_crc_value (uint8_t * write_buf, uint32_t len);
+static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
+        uint32_t * p_len, cksum_t * cksum);
 
 /**
  * @brief   Jumps to a requested address.
@@ -21,7 +21,6 @@ cbl_err_code_t cmd_jump_to (parser_t * phPrsr)
     uint32_t addr = 0u;
     void (*jump) (void);
 
-    UNUSED( &check_crc_value); // TODO remove
     DEBUG("Started\r\n");
 
     /* Get the address in hex form */
@@ -198,47 +197,15 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     uint8_t write_buf[FLASH_WRITE_SZ] = { 0 };
-    char *charStart = NULL;
-    char *charLen = NULL;
     uint32_t start;
     uint32_t len;
+    cksum_t cksum = CKSUM_UNDEF;
     HAL_StatusTypeDef HALCode;
 
     DEBUG("Started\r\n");
 
-    /* Get starting address */
-    charStart = parser_get_val(phPrsr, TXT_PAR_FLASH_WRITE_START,
-            strlen(TXT_PAR_FLASH_WRITE_START));
-    if (NULL == charStart)
-    {
-        return CBL_ERR_NEED_PARAM;
-    }
-    /* Get length in bytes */
-    charLen = parser_get_val(phPrsr, TXT_PAR_FLASH_WRITE_COUNT,
-            strlen(TXT_PAR_FLASH_WRITE_COUNT));
-    if (NULL == charLen)
-    {
-        return CBL_ERR_NEED_PARAM;
-    }
-    /* Fill start */
-    eCode = str2ui32(charStart, strlen(charStart), &start, 16);
+    eCode = write_get_params(phPrsr, &start, &len, &cksum);
     ERR_CHECK(eCode);
-
-    /* Fill len */
-    eCode = str2ui32(charLen, strlen(charLen), &len, 10);
-    ERR_CHECK(eCode);
-
-    /* Check validity of input addresses */
-    if (IS_FLASH_ADDRESS(start) == false
-            || IS_FLASH_ADDRESS(start + len) == false)
-    {
-        return CBL_ERR_WRITE_INV_ADDR;
-    }
-    /* Check if len is too big  */
-    if (len > FLASH_WRITE_SZ)
-    {
-        return CBL_ERR_WRITE_TOO_BIG;
-    }
 
     /* Reset UART byte counter */
     gRxCmdCntr = 0;
@@ -248,8 +215,7 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
             strlen(TXT_RESP_FLASH_WRITE_READY));
 
     /* Request 'len' bytes */
-    eCode = recv_from_host((char *)write_buf, len); /* WARNING: Assumes only
-     ASCII 0-127, and char length equals 8 */
+    eCode = recv_from_host(write_buf, len);
     ERR_CHECK(eCode);
 
     while (gRxCmdCntr != 1)
@@ -260,11 +226,10 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
     /* Write data to flash, signalize with blue LED */
     LED_ON(BLUE);
 
-    /* Check CRC value */
-#if 0
-    eCode = check_crc_value(write_buf, len);
+    /* Check checksum value */
+    eCode = verify_checksum(write_buf, len, cksum);
     ERR_CHECK(eCode);
-#endif
+
     /* Unlock flash */
     if (HAL_FLASH_Unlock() != HAL_OK)
     {
@@ -340,35 +305,66 @@ cbl_err_code_t cmd_mem_read (parser_t * phPrsr)
 }
 
 /**
- * @brief               Checks if CRC value of input buffer is OK
- *                      CRC parameters:
- *                          Polynomial length: 32
- *                          CRC-32 polynomial: 0x4C11DB7 (Ethernet)
- *                                 Init value: 0xFFFFFFFF
- *                                     XOROut: false
- *                                      RefIn: false
- *                                     RefOut: false
+ * @brief Gets parameters from parser handle
  *
- * @param write_buf[in] Buffer with 32 bit CRC in the end
- *
- * @param len[in]       Length of write_buf
- *
- * @return              CBL_ERR_CRC_WRONG if invalid CRC, otherwise CBL_ERR_OK
+ * @param ph_prsr[in] Parser containing parameters
+ * @param p_start[out] Pointer of start address
+ * @param p_len[out] Pointer to length to write
+ * @param p_cksum[out] Pointer to checksum enumerator
  */
-static cbl_err_code_t check_crc_value (uint8_t * write_buf, uint32_t len)
+static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
+        uint32_t * p_len, cksum_t * p_cksum)
 {
-    uint32_t expected_CRC = 0;
-    /* NOTE: Zero as write_buf shall always be divisible polynomial by
-     the used CRC polynomial */
-    uint32_t poly[2] = { 0x12345678, 0xDF8A8A2B };
-    uint32_t calc_CRC = HAL_CRC_Calculate( &hcrc, (uint32_t *)poly, 2);
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    char *charStart = NULL;
+    char *charLen = NULL;
+    char *charChecksum = NULL;
 
-    if (calc_CRC != expected_CRC)
+    /* Get starting address */
+    charStart = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_START,
+            strlen(TXT_PAR_FLASH_WRITE_START));
+    if (NULL == charStart)
     {
-        return CBL_ERR_CRC_WRONG;
+        return CBL_ERR_NEED_PARAM;
+    }
+    /* Get length in bytes */
+    charLen = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_COUNT,
+            strlen(TXT_PAR_FLASH_WRITE_COUNT));
+    if (NULL == charLen)
+    {
+        return CBL_ERR_NEED_PARAM;
     }
 
-    return CBL_ERR_OK;
+    /* Get checksum to be used */
+    charChecksum = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_COUNT,
+            strlen(TXT_PAR_FLASH_WRITE_COUNT));
+    if (NULL == charChecksum)
+    {
+        return CBL_ERR_NEED_PARAM;
+    }
+
+    /* Fill start */
+    eCode = str2ui32(charStart, strlen(charStart), p_start, 16);
+    ERR_CHECK(eCode);
+
+    /* Fill len */
+    eCode = str2ui32(charLen, strlen(charLen), p_len, 10);
+    ERR_CHECK(eCode);
+
+    if (IS_FLASH_ADDRESS(*p_start) == false
+            || IS_FLASH_ADDRESS((*p_start) + (*p_len) - 1) == false)
+    {
+        return CBL_ERR_WRITE_INV_ADDR;
+    }
+
+    if (( *p_len) > FLASH_WRITE_SZ)
+    {
+        return CBL_ERR_WRITE_TOO_BIG;
+    }
+
+    eCode = enum_checksum(charChecksum, strlen(charChecksum), p_cksum);
+
+    return eCode;
 }
 
 /*** end of file ***/
