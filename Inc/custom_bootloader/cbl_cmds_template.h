@@ -23,7 +23,7 @@
  *  8. In cmd_help (custom_bootloader.c) add description of newly added command
  *
  *  All steps have been done for function below, just include this header in
- *  custom_bootloader.c for demonstation of cmd_template
+ *  custom_bootloader.c for demonstration of cmd_template
  */
 
 /* Add a cmd name */
