@@ -7,10 +7,11 @@
  * @note    Written according to BARR-C:2018 coding standard
  *
  */
-
 #ifndef __CBL_H
 #define __CBL_H
- 
+
+#include <stdlib.h>
+
 #define CBL_VERSION "v1.0"
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
@@ -49,7 +50,8 @@ typedef enum
     CBL_ERR_TEMP_NOT_VAL1 /*!< Explanation of error. DON'T FORGET THE HANDLER */
 } cbl_err_code_t;
 
-void CBL_Run (void);
+void CBL_run_system (void);
+cbl_err_code_t CBL_process_cmd (char * cmd, size_t len);
 
 #endif /* __CBL_H */
 /****END OF FILE****/

@@ -17,7 +17,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
 #include "usart.h"
 #include "crc.h"
 #include "dma.h"
@@ -81,9 +80,11 @@ static cbl_err_code_t cmd_exit (parser_t * phPrsr);
 
 // \f - new page
 /**
- * @brief   Gives control to the bootloader
+ * @brief   Gives control to the bootloader system. Bootloader system waits for
+ *          a command from the host and blocks the thread until exit is
+ *          requested or unrecoverable error happens.
  */
-void CBL_Run ()
+void CBL_run_system ()
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     INFO("Custom bootloader started\r\n");
@@ -102,6 +103,36 @@ void CBL_Run ()
     ERROR("Switching to user application failed\r\n");
 }
 
+/**
+ * @brief Handles only given command in 'cmd', doesn't give control to the
+ * bootloader system
+ *
+ * @note Receives command directly from the programmer and not host
+ * @note Function that returns textual data will print it out towards the host
+ *       over defined peripheral
+ * @note Expects a command without CRLF
+ *
+ * @param cmd[in] Command to process
+ * @param len[in] length of cmd
+ *
+ * @return CBL_ERR_OK if no error, else error code
+ */
+cbl_err_code_t CBL_process_cmd (char * cmd, size_t len)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    cmd_t cmdCode = CMD_UNDEF;
+    parser_t parser = { 0 };
+
+    eCode = parser_run(cmd, len, &parser);
+    ERR_CHECK(eCode);
+
+    eCode = enum_cmd(parser.cmd, strlen(parser.cmd), &cmdCode);
+    ERR_CHECK(eCode);
+
+    eCode = handle_cmd(cmdCode, &parser);
+    return eCode;
+}
+
 // \f - new page
 
 /**
@@ -110,24 +141,21 @@ void CBL_Run ()
  */
 static void shell_init (void)
 {
-    char bufWelcome[] = ""
-            "\r\n*********************************************\r\n"
-            "Custom bootloader for STM32F4 Discovery board\r\n"
-            "*********************************************\r\n"
-            "*********************************************\r\n"
-            "                     "
-    CBL_VERSION
-    "                     \r\n"
-    "*********************************************\r\n"
-    "               Master's thesis               \r\n"
-    "                  Dino Saric                 \r\n"
-    "            University of Zagreb             \r\n"
-    "                     2020                    \r\n"
-    "*********************************************\r\n"
-    "          If confused type \"help\"          \r\n"
-    "*********************************************\r\n";
-    MX_DMA_Init();
-    MX_USART2_UART_Init();
+    char bufWelcome[] = CRLF
+    "*********************************************" CRLF
+    "Custom bootloader for STM32F4 Discovery board" CRLF
+    "*********************************************" CRLF
+    "*********************************************" CRLF
+    "                     " CBL_VERSION CRLF
+    "*********************************************" CRLF
+    "               Master's thesis" CRLF
+    "                  Dino Saric" CRLF
+    "            University of Zagreb" CRLF
+    "                     2020" CRLF
+    "*********************************************" CRLF
+    "          If confused type \"help\"          " CRLF
+    "*********************************************" CRLF;
+
     send_to_host(bufWelcome, strlen(bufWelcome));
 
     UNUSED( &stop_recv_from_host);
@@ -224,7 +252,7 @@ static cbl_err_code_t run_shell_system (void)
                 }
                 else
                 {
-                    /* Dont change state */
+                    /* Don't change state */
                 }
             }
             break;
@@ -280,8 +308,6 @@ static cbl_err_code_t run_shell_system (void)
 static cbl_err_code_t sys_state_operation (void)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    cmd_t cmdCode = CMD_UNDEF;
-    parser_t parser = { 0 };
     char cmd[CMD_BUF_SZ] = { 0 };
 
     LED_ON(GREEN);
@@ -289,16 +315,8 @@ static cbl_err_code_t sys_state_operation (void)
     ERR_CHECK(eCode);
     LED_OFF(GREEN);
 
-    /* Command processing, turn on orange LED */
     LED_ON(ORANGE);
-    eCode = parser_run(cmd, strlen(cmd), &parser);
-    ERR_CHECK(eCode);
-
-    eCode = enum_cmd(parser.cmd, strlen(cmd), &cmdCode);
-    ERR_CHECK(eCode);
-
-    eCode = handle_cmd(cmdCode, &parser);
-    /* Command processing success, turn off orange LED */
+    eCode = CBL_process_cmd(cmd, strlen(cmd));
     LED_OFF(ORANGE);
     return eCode;
 }
@@ -567,11 +585,11 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
 #endif /* CBL_CMDS_MEMORY_H */
 #ifdef CBL_CMDS_TEMPLATE_H
             /* Add a new case for the enumerator and call the function handler */
-        case CMD_TEMPLATE:
-        {
-            eCode = cmd_template(phPrsr);
-        }
-        break;
+            case CMD_TEMPLATE:
+            {
+                eCode = cmd_template(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_TEMPLATE_H */
 
         case CMD_UNDEF:
@@ -982,8 +1000,7 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             "application" CRLF CRLF
             "********************************************************" CRLF
             "Examples are contained in README.md" CRLF
-            "********************************************************" CRLF
-            CRLF;
+            "********************************************************" CRLF;
     DEBUG("Started\r\n");
 
     /* Send response */

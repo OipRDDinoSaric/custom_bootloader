@@ -29,8 +29,8 @@
 /* USER CODE BEGIN Includes */
 #include "custom_bootloader.h"
 
-#if LOG_EN == true
-extern void initialise_monitor_handles(void);
+#ifndef NDEBUG
+extern void initialise_monitor_handles (void);
 #endif
 
 /* USER CODE END Includes */
@@ -79,12 +79,12 @@ int main (void)
     /* MCU Configuration--------------------------------------------------------*/
 
     /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-     HAL_Init();
+    HAL_Init();
 
     /* USER CODE BEGIN Init */
 
     /* Used for semihosting (printf) to console */
-#if LOG_EN == true
+#ifndef NDEBUG
     /* NOTE: if there is an error of multiple definitions exclude ../Src/syscalls.c from build */
     initialise_monitor_handles();
 #endif
@@ -102,9 +102,10 @@ int main (void)
     MX_CRC_Init();
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
-    CBL_Run();
 
-    /* This shall never be reached */
+    CBL_run_system();
+
+    /* WARNING: This shall never be reached */
 
     /* USER CODE END 2 */
 
