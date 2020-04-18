@@ -22,8 +22,8 @@
  *  7. In sys_state_error (custom_bootloader.c) add handlers for new errors
  *  8. In cmd_help (custom_bootloader.c) add description of newly added command
  *
- *  All steps have been done for function below, just include this header
- *  for demonstation of cmd_template
+ *  All steps have been done for function below, just include this header in
+ *  custom_bootloader.c for demonstation of cmd_template
  */
 
 /* Add a cmd name */
