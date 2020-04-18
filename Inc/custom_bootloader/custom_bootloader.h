@@ -45,7 +45,8 @@ typedef enum
     CBL_ERR_NOT_DIG, /*!< String contains non digit characters  */
     CBL_ERR_UNSUP_BASE, /*!< Unsupported number base */
     CBL_ERR_1ST_NOT_ZERO, /*!< First char must be '0' */
-    CBL_ERR_CRC_WRONG /*!< CRC calculation on received bytes is wrong */
+    CBL_ERR_CRC_WRONG, /*!< CRC calculation on received bytes is wrong */
+    CBL_ERR_TEMP_NOT_VAL1 /*!< Explanation of error. DON'T FORGET THE HANDLER */
 } cbl_err_code_t;
 
 void CBL_Run (void);

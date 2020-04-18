@@ -22,8 +22,15 @@
 #include "crc.h"
 #include "dma.h"
 /* Include what command types you want to support */
+#if true
 #include "cbl_cmds_memory.h"
+#endif
+#if true
 #include "cbl_cmds_opt_bytes.h"
+#endif
+#if false
+#include "cbl_cmds_template.h"
+#endif
 
 #define CMD_BUF_SZ 128 /*!< Size of a new command buffer */
 
@@ -53,7 +60,8 @@ typedef enum
     CMD_READ_SECT_PROT_STAT,
     CMD_MEM_READ,
     CMD_FLASH_WRITE,
-    CMD_EXIT
+    CMD_EXIT,
+    CMD_TEMPLATE
 } cmd_t;
 
 static bool gIsExitReq = false;
@@ -448,6 +456,14 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
         *pCmdCode = CMD_FLASH_WRITE;
     }
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_TEMPLATE_H
+    /* Add a new enum value in cmd_t and check for it here */
+    else if (len == strlen(TXT_CMD_TEMPLATE)
+            && strncmp(buf, TXT_CMD_TEMPLATE, strlen(TXT_CMD_TEMPLATE)) == 0)
+    {
+        *pCmdCode = CMD_TEMPLATE;
+    }
+#endif /* CBL_CMDS_TEMPLATE_H */
     else
     {
         *pCmdCode = CMD_UNDEF;
@@ -549,6 +565,14 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         }
         break;
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_TEMPLATE_H
+            /* Add a new case for the enumerator and call the function handler */
+        case CMD_TEMPLATE:
+        {
+            eCode = cmd_template(phPrsr);
+        }
+        break;
+#endif /* CBL_CMDS_TEMPLATE_H */
 
         case CMD_UNDEF:
             /* No break */
@@ -799,6 +823,16 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         }
         break;
 
+        case CBL_ERR_TEMP_NOT_VAL1:
+        {
+            char msg[] = "\r\nERROR: Value for parameter invalid...\r\n";
+
+            WARNING("User entered wrong param. value in template function\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
         default:
         {
             ERROR("Unhandled error happened\r\n")
@@ -938,6 +972,12 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             " - Number of bytes to read."
             CRLF CRLF
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_TEMPLATE_H
+            /* Add a description of newly added command */
+            TXT_CMD_TEMPLATE " | Explanation of function" CRLF
+            "     " TXT_PAR_TEMPLATE_PARAM1 " - Example param, valid value is: "
+            TXT_PAR_TEMPLATE_VAL1 CRLF CRLF
+#endif /* CBL_CMDS_TEMPLATE_H */
             "- "TXT_CMD_EXIT " | Exits the bootloader and starts the user "
             "application" CRLF CRLF
             "********************************************************" CRLF
@@ -964,7 +1004,6 @@ static cbl_err_code_t cmd_cid (parser_t * phPrsr)
     DEBUG("Started\r\n");
 
     /* Convert hex value to text */
-    // TODO: Make hw independent
     itoa((int)(DBGMCU->IDCODE & 0x00000FFF), cidhelp, 16);
 
     /* Add 0x to to beginning */

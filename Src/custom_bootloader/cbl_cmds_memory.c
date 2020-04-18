@@ -21,6 +21,7 @@ cbl_err_code_t cmd_jump_to (parser_t * phPrsr)
     uint32_t addr = 0u;
     void (*jump) (void);
 
+    UNUSED( &check_crc_value); // TODO remove
     DEBUG("Started\r\n");
 
     /* Get the address in hex form */
