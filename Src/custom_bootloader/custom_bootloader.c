@@ -18,8 +18,6 @@
 #include <stdio.h>
 #include <string.h>
 #include "usart.h"
-#include "crc.h"
-#include "dma.h"
 /* Include what command types you want to support */
 #if true
 #include "cbl_cmds_memory.h"

@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdio.h>
 #include <custom_bootloader.h>
 #include "main.h"
 

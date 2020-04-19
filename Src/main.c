@@ -20,13 +20,10 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "crc.h"
-#include "dma.h"
-#include "usart.h"
-#include "gpio.h"
-
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
+#include "ST/crc.h"
+#include "ST/dma.h"
+#include "ST/gpio.h"
+#include "ST/usart.h"
 #include "custom_bootloader.h"
 
 #ifndef NDEBUG

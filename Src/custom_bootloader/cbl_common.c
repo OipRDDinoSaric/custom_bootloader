@@ -9,9 +9,9 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include "usart.h"
 #include "crc.h"
 #include "dma.h"
+#include "usart.h"
 
 /** Used as a counter in the interrupt routine */
 volatile uint32_t gRxCmdCntr;
