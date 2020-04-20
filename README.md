@@ -151,6 +151,10 @@ Parameters:
 
       - "no" - No protection, fastest
 
+Note:
+
+  When using crc-32 checksum sent data has to be divisible by 4
+
 Execute command: 
 
     > flash-write start=0x87654321 count=68 cksum=crc32  
