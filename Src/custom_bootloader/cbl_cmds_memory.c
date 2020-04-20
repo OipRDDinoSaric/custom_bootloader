@@ -4,7 +4,6 @@
  */
 #include "cbl_cmds_memory.h"
 #include "string.h"
-#include "cbl_checksum.h"
 
 static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
         uint32_t * p_len, cksum_t * cksum);

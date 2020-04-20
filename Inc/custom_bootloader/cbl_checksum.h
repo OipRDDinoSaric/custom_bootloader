@@ -2,8 +2,8 @@
  *
  * @brief All checksum implementations available
  */
-#ifndef CBL_CMDS_TEMPLATE_H
-#define CBL_CMDS_TEMPLATE_H
+#ifndef CBL_CHECKSUM_H
+#define CBL_CHECKSUM_H
 #include "cbl_common.h"
 
 typedef enum

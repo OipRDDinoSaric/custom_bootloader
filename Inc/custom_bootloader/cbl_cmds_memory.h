@@ -6,6 +6,7 @@
 #define CBL_CMDS_MEMORY_H
 
 #include "cbl_common.h"
+#include "cbl_checksum.h"
 
 #define TXT_FLASH_WRITE_SZ "1024" /*!< Size of a buffer used to write to flash
                                   as char array */

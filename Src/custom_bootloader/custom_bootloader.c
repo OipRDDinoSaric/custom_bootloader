@@ -984,16 +984,16 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
 #ifdef CBL_CMDS_MEMORY_H
             "- " TXT_CMD_JUMP_TO
             " | Jumps to a requested address" CRLF
-            "    "
-            TXT_PAR_JUMP_TO_ADDR
-            " - Address to jump to in hex format "
+            "    " TXT_PAR_JUMP_TO_ADDR " - Address to jump to in hex format "
             "(e.g. 0x12345678), 0x can be omitted. " CRLF CRLF
             "- " TXT_CMD_FLASH_ERASE
             " | Erases flash memory" CRLF "    " TXT_PAR_FLASH_ERASE_TYPE
-            " - Defines type of flash erase." " \""
-            TXT_PAR_FLASH_ERASE_TYPE_MASS "\" erases all sectors, \""
-            TXT_PAR_FLASH_ERASE_TYPE_SECT "\" erases only selected sectors."
-            CRLF "    " TXT_PAR_FLASH_ERASE_SECT " - First sector to erase. "
+            " - Defines type of flash erase." CRLF
+            "          \"" TXT_PAR_FLASH_ERASE_TYPE_MASS "\" erases all "
+            "sectors" CRLF
+            "          \"" TXT_PAR_FLASH_ERASE_TYPE_SECT "\" erases only "
+            "selected sectors" CRLF
+            "    " TXT_PAR_FLASH_ERASE_SECT " - First sector to erase. "
             "Bootloader is on sectors 0, 1 and 2. Not needed with mass erase."
             CRLF "    " TXT_PAR_FLASH_ERASE_COUNT
             " - Number of sectors to erase. Not needed with mass erase." CRLF
@@ -1002,11 +1002,23 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             "     " TXT_PAR_FLASH_WRITE_START " - Starting address in hex "
             "format (e.g. 0x12345678), 0x can be omitted."CRLF
             "     " TXT_PAR_FLASH_WRITE_COUNT " - Number of bytes to write. "
-            "Maximum bytes: "
-            TXT_FLASH_WRITE_SZ
+            "Maximum bytes: " TXT_FLASH_WRITE_SZ CRLF
+            "     [" TXT_PAR_FLASH_WRITE_CKSUM "] - Checksum to use. If not"
+            " present, no checksum is assumed" CRLF
+            "                \"" TXT_CKSUM_SHA256 "\" - Best protection, "
+            "slowest" CRLF
+            "                \"" TXT_CKSUM_CRC "\" - Medium protection, fast,"
+            " uses inbuilt CRC32 hardware." CRLF
+            "                   Note: Data length must be divisible by 4! " CRLF
+            "                   Settings:" CRLF
+            "                            Polynomial: 0x4C11DB7 (Ethernet)" CRLF
+            "                            Init value: 0xFFFFFFFF" CRLF
+            "                                XORout: true" CRLF
+            "                                 RefIn: true" CRLF
+            "                                RefOut: true" CRLF
+            "                \"" TXT_CKSUM_NO "\" - No protection, fastest"
             CRLF CRLF
-            "- "
-            TXT_CMD_MEM_READ
+            "- " TXT_CMD_MEM_READ
             " | Read bytes from memory" CRLF
             "     "
             TXT_PAR_FLASH_WRITE_START
@@ -1019,9 +1031,13 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
 #endif /* CBL_CMDS_MEMORY_H */
 #ifdef CBL_CMDS_TEMPLATE_H
             /* Add a description of newly added command */
-            TXT_CMD_TEMPLATE " | Explanation of function" CRLF
-            "     " TXT_PAR_TEMPLATE_PARAM1 " - Example param, valid value is: "
-            TXT_PAR_TEMPLATE_VAL1 CRLF CRLF
+            TXT_CMD_TEMPLATE
+            " | Explanation of function" CRLF
+            "     "
+            TXT_PAR_TEMPLATE_PARAM1
+            " - Example param, valid value is: "
+            TXT_PAR_TEMPLATE_VAL1
+            CRLF CRLF
 #endif /* CBL_CMDS_TEMPLATE_H */
             "- "TXT_CMD_EXIT " | Exits the bootloader and starts the user "
             "application" CRLF CRLF
