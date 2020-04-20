@@ -32,6 +32,8 @@ On the other hand, if user doesn't need the debug output, build and flash the pr
  - Commands are case insensitive
  
  - On error bootloader returns "ERROR:\<Explanation of error\>"
+ 
+ - Optional parameters are surrounded with [] e.g. [example]
 
 ### List
 * [version](#cmd_version) : Gets a version of the bootloader
@@ -141,11 +143,13 @@ Parameters:
      
  - count - Number of bytes to write. Maximum bytes: 1024
  
- CRC settings: 
+ - [cksum] - Defines the checksum to use. If not present no checksum is assumed.
+ 
+      - "sha256" - Gives best protection (32 bytes), slowest, uses software implementation
+           
+      - "crc32" - Medium protection, fast, uses hardware implementation. Settings in [Apendix A](#apend_a)
 
-   - Polynomial length: 32
-   - CRC-32 polynomial: 0x4C11DB7 (Ethernet)
-   - Init value: 0xFFFFFFFF
+      - "no" - No protection, fastest
 
 Execute command: 
 
@@ -229,3 +233,13 @@ Response:
 
     Exiting
 
+<a name="apend_a"></a>
+## [Apendix A](#apend_a)
+|       CRC32       |       settings       |
+|:-----------------:|:--------------------:|
+| Polynomial length |          32          |
+|     Polynomial    | 0x4C11DB7 (Ethernet) |
+|     Init value    |      0xFFFFFFFF      |
+|       XOROut      |         true         |
+|       RefOut      |         true         |
+|       RefIn       |         true         |
