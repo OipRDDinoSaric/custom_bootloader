@@ -49,7 +49,8 @@ typedef enum
     CBL_ERR_CKSUM_WRONG, /*!< Checksum for received bytes is wrong */
     CBL_ERR_TEMP_NOT_VAL1, /*!< Explanation of error. DON'T FORGET HANDLER */
     CBL_ERR_UNSUP_CKSUM, /*!< Checksum not supported for received data */
-    CBL_ERR_CRC_LEN /*!< Invalid length for CRC check */
+    CBL_ERR_CRC_LEN, /*!< Invalid length for CRC check */
+    CBL_ERR_SHA256_LEN /*!< Invalid length for sha256 */
 } cbl_err_code_t;
 
 void CBL_run_system (void);

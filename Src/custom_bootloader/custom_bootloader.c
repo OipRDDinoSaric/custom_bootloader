@@ -156,7 +156,7 @@ static void shell_init (void)
 
     send_to_host(bufWelcome, strlen(bufWelcome));
 
-    UNUSED( &stop_recv_from_host);
+    UNUSED( &recv_from_host_stop);
 
     /* Bootloader started turn on red LED */
     LED_ON(RED);
@@ -344,7 +344,7 @@ static cbl_err_code_t wait_for_cmd (char * buf, size_t len)
     while (gRxCmdCntr < len)
     {
         /* Receive one char from host */
-        eCode = recv_from_host((uint8_t *)buf + iii, 1);
+        eCode = recv_from_host_start((uint8_t *)buf + iii, 1);
         ERR_CHECK(eCode);
 
         while (iii != (gRxCmdCntr - 1))
@@ -832,7 +832,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             char msg[] = "\r\nERROR: Data corrupted during transport"
                     " (Invalid checksum). Retry last message.\r\n";
 
-            WARNING("Data corrupted during transport, invalid CRC\r\n");
+            WARNING("Data corrupted during transport, invalid checksum\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
@@ -864,6 +864,16 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     "divisible by 4 \r\n";
 
             WARNING("User entered invalid length for CRC32\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_SHA256_LEN:
+        {
+            char msg[] = "\r\nERROR: Invalid length for sha256\r\n";
+
+            WARNING("User entered invalid length for sha256\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }

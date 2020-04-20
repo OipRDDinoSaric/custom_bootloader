@@ -208,11 +208,8 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
     eCode = write_get_params(phPrsr, &start, &len, &cksum);
     ERR_CHECK(eCode);
 
-    /* CRC32 data must be multiple of 4 bytes and longer than 4 */
-    if ((cksum == CKSUM_CRC) && ((len % 4 != 0) || (len <= 4)))
-    {
-        return CBL_ERR_CRC_LEN;
-    }
+    eCode = verify_msg_len_cksum(cksum, len);
+    ERR_CHECK(eCode);
 
     /* Reset UART byte counter */
     gRxCmdCntr = 0;
@@ -222,7 +219,7 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
             strlen(TXT_RESP_FLASH_WRITE_READY));
 
     /* Request 'len' bytes */
-    eCode = recv_from_host(write_buf, len);
+    eCode = recv_from_host_start(write_buf, len);
     ERR_CHECK(eCode);
 
     while (gRxCmdCntr != 1)

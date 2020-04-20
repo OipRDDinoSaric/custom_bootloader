@@ -108,8 +108,8 @@ cbl_err_code_t parser_run (char * cmd, size_t len, parser_t * phPrsr);
 char *parser_get_val (parser_t * phPrsr, char * name, size_t lenName);
 
 cbl_err_code_t send_to_host (const char * buf, size_t len);
-cbl_err_code_t recv_from_host (uint8_t * buf, size_t len);
-cbl_err_code_t stop_recv_from_host (void);
+cbl_err_code_t recv_from_host_start (uint8_t * buf, size_t len);
+cbl_err_code_t recv_from_host_stop (void);
 
 cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,
         uint8_t base);
