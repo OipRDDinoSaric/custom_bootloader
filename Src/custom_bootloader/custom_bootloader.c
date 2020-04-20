@@ -746,11 +746,11 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         }
         break;
 
-        case CBL_ERR_WRITE_TOO_BIG:
+        case CBL_ERR_INV_SZ:
         {
-            char msg[] = "\r\nERROR: Inputed too big value\r\n";
+            char msg[] = "\r\nERROR: Invalid length\r\n";
 
-            INFO("User requested to write a too big chunk\r\n");
+            INFO("User entered length 0 or too big\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
@@ -827,11 +827,10 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         }
         break;
 
-        case CBL_ERR_CRC_WRONG:
+        case CBL_ERR_CKSUM_WRONG:
         {
-            char msg[] =
-                    "\r\nERROR: Data corrupted during transport (Invalid CRC)."
-                            " Retry last message.\r\n";
+            char msg[] = "\r\nERROR: Data corrupted during transport"
+                    " (Invalid checksum). Retry last message.\r\n";
 
             WARNING("Data corrupted during transport, invalid CRC\r\n");
             send_to_host(msg, strlen(msg));
@@ -848,29 +847,31 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             eCode = CBL_ERR_OK;
         }
         break;
-        case CBL_ERR_INV_CKSUM:
-        {
-            char msg[] = "\r\nERROR: Checksum failed. Retry send\r\n";
 
-            WARNING("Invalid checksum of received files\r\n");
+        case CBL_ERR_UNSUP_CKSUM:
+        {
+            char msg[] = "\r\nERROR: Requested checksum not supported\r\n";
+
+            WARNING("User requested checksum not supported\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
+
         case CBL_ERR_CRC_LEN:
         {
             char msg[] = "\r\nERROR: Length for CRC32 must be "
                     "divisible by 4 \r\n";
 
-            WARNING("User netered invalid length for CRC32\r\n");
+            WARNING("User entered invalid length for CRC32\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
+
         default:
         {
-            ERROR("Unhandled error happened\r\n")
-            ;
+            ERROR("Unhandled error happened\r\n");
         }
         break;
 

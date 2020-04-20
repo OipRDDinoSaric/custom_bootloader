@@ -37,7 +37,7 @@ typedef enum
     CBL_ERR_INV_SECT, /*!< Wrong sector number given */
     CBL_ERR_INV_SECT_COUNT, /*!< Wrong sector count given */
     CBL_ERR_WRITE_INV_ADDR, /*!< Given address can't be written to */
-    CBL_ERR_WRITE_TOO_BIG, /*!< Entered a too large size to write */
+    CBL_ERR_INV_SZ, /*!< Entered size 0 or too long */
     CBL_ERR_HAL_WRITE, /*!< Error on HAL level while writing to flash */
     CBL_ERR_ERASE_INV_TYPE, /*!< Erase command has wrong erase type param */
     CBL_ERR_RWP_INV_TYPE, /*!< Invalid type in enable rw protec. */
@@ -46,9 +46,9 @@ typedef enum
     CBL_ERR_NOT_DIG, /*!< String contains non digit characters  */
     CBL_ERR_UNSUP_BASE, /*!< Unsupported number base */
     CBL_ERR_1ST_NOT_ZERO, /*!< First char must be '0' */
-    CBL_ERR_CRC_WRONG, /*!< CRC calculation on received bytes is wrong */
+    CBL_ERR_CKSUM_WRONG, /*!< Checksum for received bytes is wrong */
     CBL_ERR_TEMP_NOT_VAL1, /*!< Explanation of error. DON'T FORGET HANDLER */
-    CBL_ERR_INV_CKSUM, /*!< Invalid checksum for received data */
+    CBL_ERR_UNSUP_CKSUM, /*!< Checksum not supported for received data */
     CBL_ERR_CRC_LEN /*!< Invalid length for CRC check */
 } cbl_err_code_t;
 

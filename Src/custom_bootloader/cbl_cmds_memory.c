@@ -8,6 +8,8 @@
 
 static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
         uint32_t * p_len, cksum_t * cksum);
+static cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
+        uint32_t len);
 
 /**
  * @brief   Jumps to a requested address.
@@ -97,7 +99,6 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
     if (strncmp(type, TXT_PAR_FLASH_ERASE_TYPE_SECT,
             strlen(TXT_PAR_FLASH_ERASE_TYPE_SECT)) == 0)
     {
-        /* Set correct erase type */
         settings.TypeErase = FLASH_TYPEERASE_SECTORS;
 
         /* Get first sector to write to */
@@ -151,6 +152,7 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
         /* Type has wrong value */
         return CBL_ERR_ERASE_INV_TYPE;
     }
+
     /* Turn on the blue LED, signalizing flash manipulation */
     LED_ON(BLUE);
 
@@ -200,17 +202,22 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
     uint32_t start;
     uint32_t len;
     cksum_t cksum = CKSUM_UNDEF;
-    HAL_StatusTypeDef HALCode;
 
     DEBUG("Started\r\n");
 
     eCode = write_get_params(phPrsr, &start, &len, &cksum);
     ERR_CHECK(eCode);
 
+    /* CRC32 data must be multiple of 4 bytes and longer than 4 */
+    if ((cksum == CKSUM_CRC) && ((len % 4 != 0) || (len <= 4)))
+    {
+        return CBL_ERR_CRC_LEN;
+    }
+
     /* Reset UART byte counter */
     gRxCmdCntr = 0;
 
-    /* Notify host bootloader is ready to receive bytes */
+    /* Notify host bootloader, ready to receive bytes */
     send_to_host(TXT_RESP_FLASH_WRITE_READY,
             strlen(TXT_RESP_FLASH_WRITE_READY));
 
@@ -223,38 +230,17 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
         /* Wait for 'len' bytes */
     }
 
-    /* Write data to flash, signalize with blue LED */
     LED_ON(BLUE);
 
-    /* Check checksum value */
     eCode = verify_checksum(write_buf, len, cksum);
     ERR_CHECK(eCode);
 
-    /* Unlock flash */
-    if (HAL_FLASH_Unlock() != HAL_OK)
-    {
-        return CBL_ERR_HAL_UNLOCK;
-    }
+    remove_checksum(cksum, &len);
 
-    /* Write to flash */
-    for (uint32_t i = 0u; i < len; i++)
-    {
-        /* Write a byte */
-        HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, start + i,
-                write_buf[i]);
-        if (HALCode != HAL_OK)
-        {
-            HAL_FLASH_Lock();
-            LED_OFF(BLUE);
-            return CBL_ERR_HAL_WRITE;
-        }
-    }
-
-    HAL_FLASH_Lock();
-
+    eCode = write_program_bytes(start, write_buf, len);
     LED_OFF(BLUE);
+    ERR_CHECK(eCode);
 
-    /* Send response */
     eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
     return eCode;
 }
@@ -336,12 +322,9 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
     }
 
     /* Get checksum to be used */
-    charChecksum = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_COUNT,
-            strlen(TXT_PAR_FLASH_WRITE_COUNT));
-    if (NULL == charChecksum)
-    {
-        return CBL_ERR_NEED_PARAM;
-    }
+    charChecksum = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_CKSUM,
+            strlen(TXT_PAR_FLASH_WRITE_CKSUM));
+    /* This is an optional parameter, if it is not present, don't throw error */
 
     /* Fill start */
     eCode = str2ui32(charStart, strlen(charStart), p_start, 16);
@@ -357,14 +340,48 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
         return CBL_ERR_WRITE_INV_ADDR;
     }
 
-    if (( *p_len) > FLASH_WRITE_SZ)
+    if ((( *p_len) == 0) || (( *p_len) > FLASH_WRITE_SZ))
     {
-        return CBL_ERR_WRITE_TOO_BIG;
+        return CBL_ERR_INV_SZ;
     }
 
     eCode = enum_checksum(charChecksum, strlen(charChecksum), p_cksum);
 
     return eCode;
+}
+
+/**
+ * @brief Uses HAL level commands to write data to memory
+ * @param addr Starting address to write bytes to
+ * @param data Array of bytes to be writen
+ * @param len length of 'data'
+ */
+static cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
+        uint32_t len)
+{
+    HAL_StatusTypeDef HALCode;
+
+    /* Unlock flash */
+    if (HAL_FLASH_Unlock() != HAL_OK)
+    {
+        return CBL_ERR_HAL_UNLOCK;
+    }
+
+    /* Write to flash */
+    for (uint32_t iii = 0u; iii < len; iii++)
+    {
+        /* Write a byte */
+        HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, addr + iii,
+                data[iii]);
+        if (HALCode != HAL_OK)
+        {
+            HAL_FLASH_Lock();
+            return CBL_ERR_HAL_WRITE;
+        }
+    }
+
+    HAL_FLASH_Lock();
+    return CBL_ERR_OK;
 }
 
 /*** end of file ***/

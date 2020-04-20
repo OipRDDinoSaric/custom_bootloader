@@ -32,8 +32,7 @@
 #   define WARNING(f_, ...) printf("WARN:%s:", __func__); \
                             printf((f_), ##__VA_ARGS__)
 
-#   define ERROR(f_, ...) printf("ERRO:%s:%d:%s:", __FILE__, \
-                                        __LINE__, __func__); \
+#   define ERROR(f_, ...) printf("ERRO:%s:", __func__); \
                           printf((f_), ##__VA_ARGS__)
 
 #   define ASSERT(expr, f_, ...)        \
