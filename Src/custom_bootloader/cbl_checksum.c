@@ -105,6 +105,12 @@ cbl_err_code_t verify_checksum (uint8_t * buf, uint32_t len, cksum_t cksum)
         }
         break;
 
+        case CKSUM_NO:
+        {
+            /* Checksum is not needed */
+        }
+        break;
+
         case CKSUM_UNDEF:
         default:
         {

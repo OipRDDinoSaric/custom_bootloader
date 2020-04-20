@@ -232,10 +232,13 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
 
     LED_ON(BLUE);
 
-    eCode = verify_checksum(write_buf, len, cksum);
-    ERR_CHECK(eCode);
+    if (cksum != CKSUM_NO)
+    {
+        eCode = verify_checksum(write_buf, len, cksum);
+        ERR_CHECK(eCode);
 
-    remove_checksum(cksum, &len);
+        remove_checksum(cksum, &len);
+    }
 
     eCode = write_program_bytes(start, write_buf, len);
     LED_OFF(BLUE);
