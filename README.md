@@ -239,6 +239,9 @@ Response:
 
 <a name="apend_a"></a>
 ## [Apendix A](#apend_a)
+
+**NOTE:** When using CRC32 input data length must be divisible by 4! If your input is not divisible by 4 then append needed number of 0xFF on the end, before the checksum.
+
 |       CRC32       |       settings       |
 |:-----------------:|:--------------------:|
 | Polynomial length |          32          |
