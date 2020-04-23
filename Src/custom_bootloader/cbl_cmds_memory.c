@@ -10,6 +10,8 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
 static cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
         uint32_t len);
 
+
+
 /**
  * @brief   Jumps to a requested address.
  *          Parameters needed from phPrsr:
@@ -192,7 +194,8 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
  *          Parameters needed from phPrsr:
  *             - start - Starting address in hex format (e.g. 0x12345678),
  *               0x can be omitted
- *             - count - Number of bytes to write. Maximum bytes: 1024
+ *             - count - Number of bytes to write. Maximum bytes: FLASH_WRITE_SZ
+ *             - cksum - Checksum to use
  */
 cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
 {

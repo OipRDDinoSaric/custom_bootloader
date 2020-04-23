@@ -205,6 +205,9 @@ static void go_to_user_app (void)
     DEBUG("MSP value: %#x\r\n", (unsigned int ) msp_value);
     DEBUG("Reset handler address: %#x\r\n", (unsigned int ) addressRstHndl);
 
+    /* Reconfigure the vector table location */
+    SCB->VTOR = CBL_ADDR_USERAPP;
+
     /* Function from CMSIS */
     __set_MSP(msp_value);
 
