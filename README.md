@@ -141,26 +141,30 @@ Parameters:
 
  - start - Starting address in hex format (e.g. 0x12345678), 0x can be omitted
      
- - count - Number of bytes to write. Maximum bytes: 1024
+ - count - Number of bytes to write + checksum length. Maximum bytes: 1024
  
  - [cksum] - Defines the checksum to use. If not present no checksum is assumed.
  
       - "sha256" - Gives best protection (32 bytes), slowest, uses software implementation
            
-      - "crc32" - Medium protection, fast, uses hardware implementation. Settings in [Apendix A](#apend_a)
+      - "crc32" - Medium protection (4 bytes), fast, uses hardware implementation. Settings in [Apendix A](#apend_a)
 
       - "no" - No protection, fastest
 
+Note:
+
+  When using crc-32 checksum sent data has to be divisible by 4
+
 Execute command: 
 
-    > flash-write start=0x87654321 count=64  
+    > flash-write start=0x87654321 count=68 cksum=crc32  
 Response: 
 
     ready
 
 Send bytes:
 
-    <64 bytes, last 4 bytes CRC calculation>
+    <64 data bytes + 4 bytes CRC calculation>
     
 Response: 
 
@@ -235,6 +239,9 @@ Response:
 
 <a name="apend_a"></a>
 ## [Apendix A](#apend_a)
+
+**NOTE:** When using CRC32 input data length must be divisible by 4! If your input is not divisible by 4 then append needed number of 0xFF on the end, before the checksum.
+
 |       CRC32       |       settings       |
 |:-----------------:|:--------------------:|
 | Polynomial length |          32          |
