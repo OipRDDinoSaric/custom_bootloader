@@ -8,9 +8,9 @@
 #include "cbl_common.h"
 #include "cbl_checksum.h"
 
-#define TXT_FLASH_WRITE_SZ "1024" /*!< Size of a buffer used to write to flash
+#define TXT_FLASH_WRITE_SZ "5120" /*!< Size of a buffer used to write to flash
                                   as char array */
-#define FLASH_WRITE_SZ 1024 /*!< Size of a buffer used to write to flash */
+#define FLASH_WRITE_SZ 5120 /*!< Size of a buffer used to write to flash */
 
 #define TXT_CMD_JUMP_TO "jump-to"
 #define TXT_CMD_FLASH_ERASE "flash-erase"
