@@ -141,7 +141,7 @@ Parameters:
 
  - start - Starting address in hex format (e.g. 0x12345678), 0x can be omitted
      
- - count - Number of bytes to write + checksum length. Maximum bytes: 1024
+ - count - Number of bytes to write + checksum length. Chunk length is 5120
  
  - [cksum] - Defines the checksum to use. If not present no checksum is assumed.
  
