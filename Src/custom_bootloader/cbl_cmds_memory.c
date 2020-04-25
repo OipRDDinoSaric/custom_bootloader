@@ -10,8 +10,6 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
 static cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
         uint32_t len);
 
-
-
 /**
  * @brief   Jumps to a requested address.
  *          Parameters needed from phPrsr:

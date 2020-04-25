@@ -15,6 +15,8 @@
 
 /** Used as a counter in the interrupt routine */
 volatile uint32_t gRxCmdCntr;
+/** Used to signal an exit request to shell system */
+bool gIsExitReq = false;
 
 // \f - new page
 /**

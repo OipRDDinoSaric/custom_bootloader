@@ -63,7 +63,10 @@ MEMORY
 {
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 128K
 CCMRAM (rw)      : ORIGIN = 0x10000000, LENGTH = 64K
-FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 48K /* Allow bootloader only first 3 sectors */
+/* Allow bootloader only first 3 sectors */
+FLASH (rx)      : ORIGIN = 0x8000000, LENGTH = 48K 
+/* Allow sector 3 for app boot record */
+SEC3 (rx)		: ORIGIN = 0x800C000, LENGTH = 16K
 }
 
 /* Define output sections */
@@ -147,7 +150,7 @@ SECTIONS
   } >RAM AT> FLASH
 
   _siccmram = LOADADDR(.ccmram);
-
+  
   /* CCM-RAM section 
   * 
   * IMPORTANT NOTE! 
@@ -164,6 +167,18 @@ SECTIONS
     . = ALIGN(4);
     _eccmram = .;       /* create a global symbol at ccmram end */
   } >CCMRAM AT> FLASH
+  
+  /* Application boot record */
+  .appbr 0x800C000 (NOLOAD):
+  {
+    . = ALIGN(4);
+    _sappbr = .;       /* create a global symbol at appbr start */
+    *(.appbr)
+    *(.appbr*)
+    
+    . = ALIGN(4);
+    _eappbr = .;       /* create a global symbol at appbr end */
+  } >SEC3
 
   
   /* Uninitialized data section */

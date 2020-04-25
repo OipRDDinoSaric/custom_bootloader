@@ -25,6 +25,9 @@
 #if true
 #include "cbl_cmds_opt_bytes.h"
 #endif
+#if true
+#include "cbl_cmds_etc.h"
+#endif
 #if false
 #include "cbl_cmds_template.h"
 #endif
@@ -33,8 +36,7 @@
 
 #define TXT_CMD_VERSION "version"
 #define TXT_CMD_HELP "help"
-#define TXT_CMD_CID "cid"
-#define TXT_CMD_EXIT "exit"
+#define TXT_CMD_RESET "reset"
 
 typedef enum
 {
@@ -58,10 +60,9 @@ typedef enum
     CMD_MEM_READ,
     CMD_FLASH_WRITE,
     CMD_EXIT,
-    CMD_TEMPLATE
+    CMD_TEMPLATE,
+    CMD_RESET
 } cmd_t;
-
-static bool gIsExitReq = false;
 
 static void shell_init (void);
 static void go_to_user_app (void);
@@ -73,8 +74,7 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr);
 static cbl_err_code_t sys_state_error (cbl_err_code_t eCode);
 static cbl_err_code_t cmd_version (parser_t * phPrsr);
 static cbl_err_code_t cmd_help (parser_t * phPrsr);
-static cbl_err_code_t cmd_cid (parser_t * phPrsr);
-static cbl_err_code_t cmd_exit (parser_t * phPrsr);
+static cbl_err_code_t cmd_reset (parser_t * phPrsr);
 
 // \f - new page
 /**
@@ -414,6 +414,12 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     {
         *pCmdCode = CMD_HELP;
     }
+    else if (len == strlen(TXT_CMD_RESET)
+            && strncmp(buf, TXT_CMD_RESET, strlen(TXT_CMD_RESET)) == 0)
+    {
+        *pCmdCode = CMD_RESET;
+    }
+#ifdef CBL_CMDS_ETC_H
     else if (len == strlen(TXT_CMD_CID)
             && strncmp(buf, TXT_CMD_CID, strlen(TXT_CMD_CID)) == 0)
     {
@@ -424,10 +430,11 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     {
         *pCmdCode = CMD_EXIT;
     }
+#endif
 #ifdef CBL_CMDS_OPT_BYTES_H
     else if (len == strlen(TXT_CMD_GET_RDP_LVL)
             && strncmp(buf, TXT_CMD_GET_RDP_LVL, strlen(TXT_CMD_GET_RDP_LVL))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_GET_RDP_LVL;
     }
@@ -458,7 +465,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_ERASE)
             && strncmp(buf, TXT_CMD_FLASH_ERASE, strlen(TXT_CMD_FLASH_ERASE))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_FLASH_ERASE;
     }
@@ -470,7 +477,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_WRITE)
             && strncmp(buf, TXT_CMD_FLASH_WRITE, strlen(TXT_CMD_FLASH_WRITE))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_FLASH_WRITE;
     }
@@ -522,70 +529,77 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         }
         break;
 
-        case CMD_CID:
+        case CMD_RESET:
         {
-            eCode = cmd_cid(phPrsr);
-        }
-        break;
-
-        case CMD_EXIT:
-        {
-            eCode = cmd_exit(phPrsr);
+            eCode = cmd_reset(phPrsr);
         }
         break;
 
 #ifdef CBL_CMDS_OPT_BYTES_H
-        case CMD_GET_RDP_LVL:
-        {
-            eCode = cmd_get_rdp_lvl(phPrsr);
-        }
-        break;
+            case CMD_GET_RDP_LVL:
+            {
+                eCode = cmd_get_rdp_lvl(phPrsr);
+            }
+            break;
 
-        case CMD_EN_WRITE_PROT:
-        {
-            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
-        }
-        break;
+            case CMD_EN_WRITE_PROT:
+            {
+                eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
+            }
+            break;
 
-        case CMD_DIS_WRITE_PROT:
-        {
-            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
-        }
-        break;
+            case CMD_DIS_WRITE_PROT:
+            {
+                eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
+            }
+            break;
 
-        case CMD_READ_SECT_PROT_STAT:
-        {
-            eCode = cmd_get_write_prot(phPrsr);
-        }
-        break;
+            case CMD_READ_SECT_PROT_STAT:
+            {
+                eCode = cmd_get_write_prot(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_OPT_BYTES_H */
 #ifdef CBL_CMDS_MEMORY_H
-        case CMD_JUMP_TO:
-        {
-            eCode = cmd_jump_to(phPrsr);
-        }
-        break;
+            case CMD_JUMP_TO:
+            {
+                eCode = cmd_jump_to(phPrsr);
+            }
+            break;
 
-        case CMD_FLASH_ERASE:
-        {
-            eCode = cmd_flash_erase(phPrsr);
-        }
-        break;
+            case CMD_FLASH_ERASE:
+            {
+                eCode = cmd_flash_erase(phPrsr);
+            }
+            break;
 
-        case CMD_MEM_READ:
-        {
-            eCode = cmd_mem_read(phPrsr);
-        }
-        break;
+            case CMD_MEM_READ:
+            {
+                eCode = cmd_mem_read(phPrsr);
+            }
+            break;
 
-        case CMD_FLASH_WRITE:
-        {
-            eCode = cmd_flash_write(phPrsr);
-        }
-        break;
+            case CMD_FLASH_WRITE:
+            {
+                eCode = cmd_flash_write(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_ETC_H
+            case CMD_CID:
+            {
+                eCode = cmd_cid(phPrsr);
+            }
+            break;
+
+            case CMD_EXIT:
+            {
+                eCode = cmd_exit(phPrsr);
+            }
+            break;
+#endif /* CBL_CMDS_ETC_H */
 #ifdef CBL_CMDS_TEMPLATE_H
-            /* Add a new case for the enumerator and call the function handler */
+            /* Add a new case for the enumerator and call function handler */
             case CMD_TEMPLATE:
             {
                 eCode = cmd_template(phPrsr);
@@ -934,7 +948,7 @@ static cbl_err_code_t cmd_version (parser_t * phPrsr)
 /**
  * @brief Returns string to the host of all commands
  */
-static cbl_err_code_t cmd_help (parser_t * pphPrsr)
+static cbl_err_code_t cmd_help (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     const char helpPrintout[] =
@@ -952,7 +966,7 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             "- " TXT_CMD_VERSION " | Gets the current version of the running "
             "bootloader" CRLF CRLF
             "- " TXT_CMD_HELP " | Makes life easier" CRLF CRLF
-            "- " TXT_CMD_CID " | Gets chip identification number" CRLF CRLF
+            "- " TXT_CMD_RESET " | Resets the microcontroller" CRLF CRLF
 #ifdef CBL_CMDS_OPT_BYTES_H
             "- "
             TXT_CMD_GET_RDP_LVL
@@ -992,9 +1006,9 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             "- " TXT_CMD_FLASH_ERASE
             " | Erases flash memory" CRLF "    " TXT_PAR_FLASH_ERASE_TYPE
             " - Defines type of flash erase." CRLF
-            "          \"" TXT_PAR_FLASH_ERASE_TYPE_MASS "\" erases all "
+            "          \"" TXT_PAR_FLASH_ERASE_TYPE_MASS "\" - erases all "
             "sectors" CRLF
-            "          \"" TXT_PAR_FLASH_ERASE_TYPE_SECT "\" erases only "
+            "          \"" TXT_PAR_FLASH_ERASE_TYPE_SECT "\" - erases only "
             "selected sectors" CRLF
             "    " TXT_PAR_FLASH_ERASE_SECT " - First sector to erase. "
             "Bootloader is on sectors 0, 1 and 2. Not needed with mass erase."
@@ -1042,60 +1056,28 @@ static cbl_err_code_t cmd_help (parser_t * pphPrsr)
             TXT_PAR_TEMPLATE_VAL1
             CRLF CRLF
 #endif /* CBL_CMDS_TEMPLATE_H */
+#ifdef CBL_CMDS_ETC_H
+            "- " TXT_CMD_CID " | Gets chip identification number" CRLF CRLF
             "- "TXT_CMD_EXIT " | Exits the bootloader and starts the user "
             "application" CRLF CRLF
+#endif /* CBL_CMDS_ETC_H */
             "********************************************************" CRLF
             "Examples are contained in README.md" CRLF
             "********************************************************" CRLF;
     DEBUG("Started\r\n");
-
     /* Send response */
     eCode = send_to_host(helpPrintout, strlen(helpPrintout));
 
     return eCode;
 }
 
-// \f - new page
-/**
- * @brief Returns chip ID to the host
- */
-static cbl_err_code_t cmd_cid (parser_t * phPrsr)
+static cbl_err_code_t cmd_reset (parser_t * phPrsr)
 {
-    cbl_err_code_t eCode = CBL_ERR_OK;
-    char cid[14] = "0x", cidhelp[10];
+    send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
 
-    DEBUG("Started\r\n");
+    NVIC_SystemReset();
 
-    /* Convert hex value to text */
-    itoa((int)(DBGMCU->IDCODE & 0x00000FFF), cidhelp, 16);
-
-    /* Add 0x to to beginning */
-    strlcat(cid, cidhelp, 12);
-
-    /* End with a new line */
-    strlcat(cid, CRLF, 12);
-
-    /* Send response */
-    eCode = send_to_host(cid, strlen(cid));
-
-    return eCode;
+    /* Never returns */
+    return CBL_ERR_OK;
 }
-
-// \f - new page
-/**
- * @brief Makes a request from the system to exit the application
- */
-static cbl_err_code_t cmd_exit (parser_t * phPrsr)
-{
-    cbl_err_code_t eCode = CBL_ERR_OK;
-
-    DEBUG("Started\r\n");
-
-    gIsExitReq = true;
-
-    /* Send response */
-    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
-    return eCode;
-}
-
 /****END OF FILE****/

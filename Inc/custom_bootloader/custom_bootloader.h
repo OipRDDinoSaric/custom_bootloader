@@ -16,7 +16,7 @@
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
-#define CBL_ADDR_USERAPP 0x0800C000UL /*!< Address to MSP of user application */
+#define CBL_ADDR_USERAPP 0x08010000UL /*!< Address to MSP of user application */
 
 typedef enum
 {

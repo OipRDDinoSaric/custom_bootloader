@@ -87,7 +87,7 @@
                         while(0)
 
 extern volatile uint32_t gRxCmdCntr;
-
+extern bool gIsExitReq;
 typedef enum
 {
     ARG_NAME = 0, //!< ARG_NAME
