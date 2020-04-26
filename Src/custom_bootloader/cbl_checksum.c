@@ -7,14 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include "crc.h"
-#include "sha256.h"
 #include "cbl_checksum.h"
 
+#if 0
 static cbl_err_code_t calculate_crc32 (uint8_t * data, uint32_t len,
         uint32_t * out_crc);
-
+#endif
 static uint32_t lit_to_big_endian (uint32_t number);
-
 static uint32_t reflect_ui32 (uint32_t number);
 
 static const uint8_t reflect_byte_table[] = { 0x00, 0x80, 0x40, 0xC0, 0x20,
@@ -41,27 +40,350 @@ static const uint8_t reflect_byte_table[] = { 0x00, 0x80, 0x40, 0xC0, 0x20,
         0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF };
 
 /**
+ * @brief Checks checksum parameter value to check if it is supported
+ *
+ * @note If 'checksum' is NULL function assigns p_cksum CKSUM_NO
+ *
+ * @param checksum[in] checksum name
+ * @param len[in]       length of 'checksum'
+ * @param p_cksum[out]   pointer to checksum enumerator
+ */
+cbl_err_code_t enum_checksum (char * checksum, uint32_t len, cksum_t * p_cksum)
+{
+    if (checksum == NULL)
+    {
+        *p_cksum = CKSUM_NO;
+        return CBL_ERR_OK;
+    }
+
+    if (strlen(TXT_CKSUM_CRC) == len
+            && strncmp(checksum, TXT_CKSUM_CRC, len) == 0)
+    {
+        *p_cksum = CKSUM_CRC32;
+    }
+    else if (strlen(TXT_CKSUM_SHA256) == len
+            && strncmp(checksum, TXT_CKSUM_SHA256, len) == 0)
+    {
+        *p_cksum = CKSUM_SHA256;
+    }
+    else if (strlen(TXT_CKSUM_NO) == len
+            && strncmp(checksum, TXT_CKSUM_NO, len) == 0)
+    {
+        *p_cksum = CKSUM_NO;
+    }
+    else
+    {
+        *p_cksum = CKSUM_UNDEF;
+        return CBL_ERR_UNSUP_CKSUM;
+    }
+
+    return CBL_ERR_OK;
+}
+
+/**
+ * @brief Initializes the checksum denoted by 'cksum'
+ *
+ * @param cksum[in]     Enumerator of checksum to initialize
+ * @param ph_sha256[in] Pointer to the handle of sha256 checksum, if not using
+ *        sha256 send NULL for this parameter
+ */
+void init_checksum (cksum_t cksum, SHA256_CTX * ph_sha256)
+{
+    switch (cksum)
+    {
+        case CKSUM_CRC32:
+        {
+            /* Reset CRC value (0xFFFFFFFF) */
+            __HAL_CRC_DR_RESET( &hcrc);
+        }
+        break;
+
+        case CKSUM_SHA256:
+        {
+            if (ph_sha256 != NULL)
+            {
+                sha256_init(ph_sha256);
+            }
+        }
+        break;
+
+        case CKSUM_NO:
+        case CKSUM_UNDEF:
+        default:
+        {
+        }
+        break;
+    }
+}
+
+/**
+ * @brief Accumulates the checksum to the previous value
+ *
+ * @param buf[in]       Buffer to be accumulated
+ * @param len[in]       Length of buf
+ * @param cksum[in]     Enumerator of checksum to use
+ * @param ph_sha256[in] Pointer to the handle of sha256 checksum, if not using
+ *        sha256 send NULL for this parameter
+ */
+cbl_err_code_t accumulate_checksum (uint8_t * buf, uint32_t len, cksum_t cksum,
+        SHA256_CTX * ph_sha256)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+
+    switch (cksum)
+    {
+        case CKSUM_CRC32:
+        {
+            eCode = accumulate_crc32(buf, len);
+        }
+        break;
+
+        case CKSUM_SHA256:
+        {
+            if (ph_sha256 == NULL)
+            {
+                return CBL_ERR_CKSUM_WRONG;
+            }
+            eCode = accumulate_sha256(buf, len, ph_sha256);
+        }
+        break;
+
+        case CKSUM_NO:
+        {
+            /* Checksum is not needed */
+        }
+        break;
+
+        case CKSUM_UNDEF:
+        default:
+        {
+            eCode = CBL_ERR_UNSUP_CKSUM;
+        }
+        break;
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Accumulates bytes from 'buf' for CRC32
+ *                      CRC parameters:
+ *                          Polynomial length: 32
+ *                          CRC-32 polynomial: 0x4C11DB7 (Ethernet)
+ *                                 Init value: 0xFFFFFFFF
+ *                                     XOROut: true
+ *                                      RefIn: true
+ *                                     RefOut: true
+ *
+ * @note Assumes memory is in little endian!
+ * @note Input data length must be divisible by 4! So no leading zeroes are
+ *       added.
+ *
+ * @param buf[in]       Bytes to accumulate
+ * @param len[in]       Length of 'buf'
+ */
+cbl_err_code_t accumulate_crc32 (uint8_t * buf, uint32_t len)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    uint32_t ui32_data;
+
+    /* For crc32 data must be divisible by 4 */
+    if ((len % 4) != 0)
+    {
+        return CBL_ERR_CKSUM_WRONG;
+    }
+
+    for (uint32_t iii = 0; iii < len; iii = iii + 4)
+    {
+        ui32_data = *(uint32_t *) &buf[iii];
+
+        /* Make big endian and reflect bytes */
+        ui32_data = reflect_ui32(ui32_data);
+
+        HAL_CRC_Accumulate( &hcrc, &ui32_data, 1);
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Accumulates bytes from 'buf' for sha256, accumulated states are stored
+ *        in ph_sha25
+ *
+ * @param buf[in]       Buffer to be accumulated
+ * @param len[in]       Length of 'buf'
+ * @param ph_sha256[in] Pointer of a handle of sha256 states
+ */
+cbl_err_code_t accumulate_sha256 (uint8_t * buf, uint32_t len,
+        SHA256_CTX * ph_sha256)
+{
+    sha256_update(ph_sha256, buf, len);
+
+    return CBL_ERR_OK;
+}
+
+/**
+ * @brief Checks if received checksum value matches the calculated one
+ *
+ * @param p_recv_cksum[in] Pointer to the received checksum
+ * @param cksum_len[in]    Length of received checksum
+ * @param cksum[in]        Enumerator for checksum
+ * @param ph_sha256[in]    Pointer of a handle of sha256 states
+ */
+cbl_err_code_t verify_checksum (uint8_t * p_recv_cksum, uint32_t cksum_len,
+        cksum_t cksum, SHA256_CTX * ph_sha256)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+
+    switch (cksum)
+    {
+        case CKSUM_CRC32:
+        {
+            eCode = verify_crc32(p_recv_cksum, cksum_len);
+        }
+        break;
+
+        case CKSUM_SHA256:
+        {
+            eCode = verify_sha256(p_recv_cksum, cksum_len, ph_sha256);
+        }
+        break;
+
+        case CKSUM_NO:
+        {
+            /* Checksum is not needed */
+        }
+        break;
+
+        case CKSUM_UNDEF:
+        default:
+        {
+            eCode = CBL_ERR_UNSUP_CKSUM;
+        }
+        break;
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Verify if calculated CRC32 is the same as received checksum
+ *
+ * @param p_recv_cksum[in] Byte array of received checksum
+ * @param cksum_len[in]    Length of received checksum
+ */
+cbl_err_code_t verify_crc32 (uint8_t * p_recv_cksum, uint32_t cksum_len)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    uint32_t calculated_crc32 = hcrc.Instance->DR;
+    uint32_t expected_crc;
+
+    if (cksum_len != 4)
+    {
+        return CBL_ERR_CKSUM_WRONG;
+    }
+
+    expected_crc = *(uint32_t *)(p_recv_cksum);
+
+    /* Bring in line with physical layer */
+    expected_crc = lit_to_big_endian(expected_crc);
+
+    /* Reflect calculated CRC*/
+    calculated_crc32 = reflect_ui32(calculated_crc32);
+
+    /* XOROut */
+    calculated_crc32 = calculated_crc32 ^ 0xFFFFFFFF;
+
+    if (calculated_crc32 != expected_crc)
+    {
+        eCode = CBL_ERR_CKSUM_WRONG;
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Verifies if received and calculated sha256 are the same
+ *
+ * @param p_recv_cksum Pointer to recevied checksum
+ * @param cksum_len    Length of received checksum
+ * @param ph_sha256    Handle of sha256 states
+ */
+cbl_err_code_t verify_sha256 (uint8_t * p_recv_cksum, uint32_t cksum_len,
+        SHA256_CTX * ph_sha256)
+{
+    BYTE p_calculated_sha[SHA256_BLOCK_SIZE] = { 0 };
+    sha256_final(ph_sha256, p_calculated_sha);
+
+    if (SHA256_BLOCK_SIZE != cksum_len)
+    {
+        return CBL_ERR_CKSUM_WRONG;
+    }
+
+    if (memcmp(p_recv_cksum, p_calculated_sha, SHA256_BLOCK_SIZE) != 0)
+    {
+        return CBL_ERR_CKSUM_WRONG;
+    }
+    return CBL_ERR_OK;
+}
+
+/**
+ * @brief Returns the length of checksum a specified by 'cksum'
+ *
+ * @param cksum Checksum type
+ *
+ * @return Length of 'cksum' type checksum
+ */
+uint32_t checksum_get_length(cksum_t cksum)
+{
+    switch (cksum)
+        {
+            case CKSUM_CRC32:
+            {
+                return 4u;
+            }
+            break;
+
+            case CKSUM_SHA256:
+            {
+                return 32u;
+            }
+            break;
+
+            case CKSUM_NO:
+            case CKSUM_UNDEF:
+            default:
+            {
+                return 0;
+            }
+            break;
+        }
+
+}
+
+#if 0
+/**
  * @brief Returns if selected checksum is correct
  *
  * @param buf[in] Buffer to be checked
  * @param len[in] Length of buf
  * @param cksum[in] Enumerator of checksum to use
  */
-cbl_err_code_t verify_checksum (uint8_t * buf, uint32_t len, cksum_t cksum)
+cbl_err_code_t verify_checksum_old (uint8_t * buf, uint32_t len, cksum_t cksum)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
 
     switch (cksum)
     {
-        case CKSUM_CRC:
+        case CKSUM_CRC32:
         {
-            eCode = verify_crc(buf, len);
+            eCode = verify_crc_old(buf, len);
         }
         break;
 
         case CKSUM_SHA256:
         {
-            eCode = verify_sha256(buf, len);
+            eCode = verify_sha256_old(buf, len);
         }
         break;
 
@@ -97,7 +419,7 @@ cbl_err_code_t verify_checksum (uint8_t * buf, uint32_t len, cksum_t cksum)
  * @param write_buf[in] Buffer with 32 bit CRC in the end
  * @param len[in]       Length of write_buf
  */
-cbl_err_code_t verify_crc (uint8_t * write_buf, uint32_t len)
+cbl_err_code_t verify_crc_old (uint8_t * write_buf, uint32_t len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     uint32_t calc_crc;
@@ -134,10 +456,11 @@ cbl_err_code_t verify_crc (uint8_t * write_buf, uint32_t len)
  * @param buf[in] String to be checked
  * @param len[in] Length of buf
  */
-cbl_err_code_t verify_sha256 (uint8_t * buf, uint32_t len)
+cbl_err_code_t verify_sha256_old (uint8_t * buf, uint32_t len)
 {
     BYTE *expected_sha = NULL;
-    BYTE calc_sha[SHA256_BLOCK_SIZE] = { 0 };
+    BYTE calc_sha[SHA256_BLOCK_SIZE] =
+    {   0};
     SHA256_CTX h_ctx;
 
     if (len <= SHA256_BLOCK_SIZE)
@@ -146,11 +469,10 @@ cbl_err_code_t verify_sha256 (uint8_t * buf, uint32_t len)
     }
 
     /* SHA256 is on the end */
-    expected_sha = & buf[len - SHA256_BLOCK_SIZE];
+    expected_sha = &buf[len - SHA256_BLOCK_SIZE];
 
     /* Don't look at checksum blocks */
-    len -=  SHA256_BLOCK_SIZE;
-
+    len -= SHA256_BLOCK_SIZE;
 
     sha256_init( &h_ctx);
     sha256_update( &h_ctx, buf, len);
@@ -162,105 +484,6 @@ cbl_err_code_t verify_sha256 (uint8_t * buf, uint32_t len)
     }
 
     return CBL_ERR_OK;
-}
-
-/**
- * @brief Checks if given length is enough for checksum used
- *
- * @param cksum Enumerator for checksum
- * @param len Length of the string to be processed
- */
-cbl_err_code_t verify_msg_len_cksum (cksum_t cksum, uint32_t len)
-{
-    if ((cksum == CKSUM_CRC) && ((len % 4 != 0) || (len <= 4)))
-    {
-        return CBL_ERR_CRC_LEN;
-    }
-    else if ((cksum == CKSUM_SHA256) && (len <= SHA256_BLOCK_SIZE))
-    {
-        return CBL_ERR_SHA256_LEN;
-    }
-
-    return CBL_ERR_OK;
-}
-
-/**
- * @brief Checks checksum parameter value to check if it is supported
- *
- * @note If 'checksum' is NULL function assigns p_cksum CKSUM_NO
- *
- * @param checksum[in] checksum name
- * @param len[in]       length of 'checksum'
- * @param p_cksum[out]   pointer to checksum enumerator
- */
-cbl_err_code_t enum_checksum (char * checksum, uint32_t len, cksum_t * p_cksum)
-{
-    if (checksum == NULL)
-    {
-        *p_cksum = CKSUM_NO;
-        return CBL_ERR_OK;
-    }
-
-    if (strlen(TXT_CKSUM_CRC) == len
-            && strncmp(checksum, TXT_CKSUM_CRC, len) == 0)
-    {
-        *p_cksum = CKSUM_CRC;
-    }
-    else if (strlen(TXT_CKSUM_SHA256) == len
-            && strncmp(checksum, TXT_CKSUM_SHA256, len) == 0)
-    {
-        *p_cksum = CKSUM_SHA256;
-    }
-    else if (strlen(TXT_CKSUM_NO) == len
-            && strncmp(checksum, TXT_CKSUM_NO, len) == 0)
-    {
-        *p_cksum = CKSUM_NO;
-    }
-    else
-    {
-        *p_cksum = CKSUM_UNDEF;
-        return CBL_ERR_UNSUP_CKSUM;
-    }
-
-    return CBL_ERR_OK;
-}
-
-/**
- * @brief Length is reduced by number of bytes taken by checksum
- *
- * @warning User must ensure length is long enough
- *
- * @param cksum[in] Checksum enumerator
- * @param p_len[out] Pointer to length of calculated string
- */
-void remove_checksum (cksum_t cksum, uint32_t * p_len)
-{
-    if (verify_msg_len_cksum(cksum, *p_len) != CBL_ERR_OK)
-    {
-        return;
-    }
-
-    switch (cksum)
-    {
-        case CKSUM_CRC:
-        {
-            *p_len -= 4;
-        }
-        break;
-
-        case CKSUM_SHA256:
-        {
-            *p_len -= SHA256_BLOCK_SIZE;
-        }
-        break;
-
-        case CKSUM_NO:
-            /* No break */
-        default:
-        {
-        }
-        break;
-    }
 }
 
 /**
@@ -281,9 +504,6 @@ static cbl_err_code_t calculate_crc32 (uint8_t * data, uint32_t len,
         return CBL_ERR_CRC_LEN;
     }
 
-    /* Reset CRC value (0xFFFFFFFF) */
-    __HAL_CRC_DR_RESET( &hcrc);
-
     for (uint32_t iii = 0; iii < len; iii = iii + 4)
     {
         ui32_data = *(uint32_t *) &data[iii];
@@ -302,6 +522,7 @@ static cbl_err_code_t calculate_crc32 (uint8_t * data, uint32_t len,
 
     return CBL_ERR_OK;
 }
+#endif
 
 static uint32_t lit_to_big_endian (uint32_t number)
 {

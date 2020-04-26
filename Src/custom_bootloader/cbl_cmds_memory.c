@@ -188,12 +188,16 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
 
 // \f - new page
 /**
- * @brief   Writes to flash, returns CRLFreadyCRLF when ready to receive bytes
+ * @brief   Writes to flash, sector to be written into shall be erased prior
  *          Parameters needed from phPrsr:
  *             - start - Starting address in hex format (e.g. 0x12345678),
  *               0x can be omitted
- *             - count - Number of bytes to write. Maximum bytes: FLASH_WRITE_SZ
+ *             - count - Number of bytes to write without checksum.
+ *                       Maximum bytes: FLASH_WRITE_SZ
  *             - cksum - Checksum to use
+ *
+ * @note    If using checksum, data will be written to memory before checking
+ *          for checksum!
  */
 cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
 {
@@ -202,46 +206,109 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
     uint32_t start;
     uint32_t len;
     cksum_t cksum = CKSUM_UNDEF;
+    uint32_t n_chunks;
+    uint32_t iii = 0;
+    uint32_t left_to_write;
+    uint32_t chunk_addr;
+    char chunk_succ[] = "\r\nchunk OK\r\n";
+    SHA256_CTX h_cksum_sha256 = { 0 };
+    char chunk_info[64] = { 0 };
+    uint32_t cksum_len = 0;
 
     DEBUG("Started\r\n");
 
     eCode = write_get_params(phPrsr, &start, &len, &cksum);
     ERR_CHECK(eCode);
 
-    eCode = verify_msg_len_cksum(cksum, len);
-    ERR_CHECK(eCode);
+    /* Get number of chunks */
+    n_chunks = len / FLASH_WRITE_SZ;
+    n_chunks = len % FLASH_WRITE_SZ ? n_chunks + 1 : n_chunks;
 
-    /* Reset UART byte counter */
-    gRxCmdCntr = 0;
+    /* Notify host how many chunks are expected */
+    snprintf(chunk_info, sizeof(chunk_info), "\r\nchunks:%lu\r\n", n_chunks);
+    send_to_host(chunk_info, strlen(chunk_info));
 
-    /* Notify host bootloader, ready to receive bytes */
-    send_to_host(TXT_RESP_FLASH_WRITE_READY,
-            strlen(TXT_RESP_FLASH_WRITE_READY));
+    left_to_write = len;
+    chunk_addr = start;
 
-    /* Request 'len' bytes */
-    eCode = recv_from_host_start(write_buf, len);
-    ERR_CHECK(eCode);
+    /* Second parameter is used only when sha256 is used */
+    init_checksum(cksum, &h_cksum_sha256);
 
-    while (gRxCmdCntr != 1)
+    /* Get chunks one by one from host, and write them to memory, accumulating
+     * checksum */
+    while (iii < n_chunks)
     {
-        /* Wait for 'len' bytes */
-    }
+        uint32_t chunk_len = ui32_min(left_to_write, (uint32_t)FLASH_WRITE_SZ);
 
-    LED_ON(BLUE);
+        /* Notify host about current chunk number and length */
+        snprintf(chunk_info, sizeof(chunk_info),
+                "\r\nchunk:%lu|length:%lu|address:0x%08lx\r\n", iii, chunk_len,
+                chunk_addr);
+        send_to_host(chunk_info, strlen(chunk_info));
+
+        /* Reset UART byte counter */
+        gRxCmdCntr = 0;
+
+        /* Request 'chunk_len' bytes */
+        eCode = recv_from_host_start(write_buf, chunk_len);
+        ERR_CHECK(eCode);
+
+        /* Notify host to send the bytes */
+        send_to_host(TXT_RESP_FLASH_WRITE_READY,
+                strlen(TXT_RESP_FLASH_WRITE_READY));
+
+        while (gRxCmdCntr != 1)
+        {
+            /* Wait for 'len' bytes */
+        }
+
+        LED_ON(BLUE);
+        eCode = write_program_bytes(chunk_addr, write_buf, chunk_len);
+        LED_OFF(BLUE);
+        ERR_CHECK(eCode);
+
+        /* Second parameter is used only when sha256 is used */
+        accumulate_checksum(write_buf, chunk_len, cksum, &h_cksum_sha256);
+
+        eCode = send_to_host(chunk_succ, strlen(chunk_succ));
+        ERR_CHECK(eCode);
+
+        chunk_addr += chunk_len;
+        left_to_write -= chunk_len;
+        iii++;
+    }
 
     if (cksum != CKSUM_NO)
     {
-        eCode = verify_checksum(write_buf, len, cksum);
+        cksum_len = checksum_get_length(cksum);
+
+        /* Notify host cksum is expected */
+        snprintf(chunk_info, sizeof(chunk_info), "\r\nchecksum|length:%lu\r\n",
+                cksum_len);
+        send_to_host(chunk_info, strlen(chunk_info));
+
+        /* Reset UART byte counter */
+        gRxCmdCntr = 0;
+
+        /* Request 'chunk_len' bytes */
+        eCode = recv_from_host_start(write_buf, cksum_len);
         ERR_CHECK(eCode);
 
-        remove_checksum(cksum, &len);
+        /* Notify host to send the bytes */
+        send_to_host(TXT_RESP_FLASH_WRITE_READY,
+                strlen(TXT_RESP_FLASH_WRITE_READY));
+
+        while (gRxCmdCntr != 1)
+        {
+            /* Wait for 'cksum_len' bytes */
+        }
+
+        eCode = verify_checksum(write_buf, cksum_len, cksum, &h_cksum_sha256);
+        ERR_CHECK(eCode);
     }
 
-    eCode = write_program_bytes(start, write_buf, len);
-    LED_OFF(BLUE);
-    ERR_CHECK(eCode);
-
     eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+
     return eCode;
 }
 
@@ -289,6 +356,9 @@ cbl_err_code_t cmd_mem_read (parser_t * phPrsr)
     eCode = send_to_host((char *)start, len);
     return eCode;
 }
+
+// implement write sector
+// implement mass write
 
 /**
  * @brief Gets parameters from parser handle
@@ -340,7 +410,7 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
         return CBL_ERR_WRITE_INV_ADDR;
     }
 
-    if ((( *p_len) == 0) || (( *p_len) > FLASH_WRITE_SZ))
+    if (( *p_len) == 0)
     {
         return CBL_ERR_INV_SZ;
     }

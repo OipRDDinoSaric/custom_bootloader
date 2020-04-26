@@ -116,6 +116,7 @@ cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,
 cbl_err_code_t verify_digits_only (const char * str, size_t i, uint8_t base);
 cbl_err_code_t verify_jump_address (uint32_t addr);
 void ui2binstr (uint32_t num, char * str, uint8_t numofbits);
+uint32_t ui32_min (uint32_t num1, uint32_t num2);
 
 #endif /* CBL_CMDS_COMMON_H */
 /*** end of file ***/

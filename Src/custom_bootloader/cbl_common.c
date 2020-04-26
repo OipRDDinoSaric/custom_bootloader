@@ -296,5 +296,14 @@ void ui2binstr (uint32_t num, char * str, uint8_t numofbits)
     *str = '\0';
 }
 
+uint32_t ui32_min (uint32_t num1, uint32_t num2)
+{
+    if(num1 < num2)
+    {
+        return num1;
+    }
+    return num2;
+}
+
 /*** end of file ***/
 

@@ -43,7 +43,6 @@ cbl_err_code_t cbl_boot_record_set (cbl_record_t * p_new_cbl_record)
     }
 
     // write boot record
-
     eCode = cbl_program_bytes(p_new_byte, BOOT_RECORD_START, len);
 #endif
     return eCode;
