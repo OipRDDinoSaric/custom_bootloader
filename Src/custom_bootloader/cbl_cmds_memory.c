@@ -7,8 +7,6 @@
 
 static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
         uint32_t * p_len, cksum_t * cksum);
-static cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
-        uint32_t len);
 
 /**
  * @brief   Jumps to a requested address.
@@ -73,19 +71,10 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
     char *charSect = NULL;
     char *charCount = NULL;
     char *type = NULL;
-    HAL_StatusTypeDef HALCode;
-    uint32_t sectorCode;
     uint32_t sect;
     uint32_t count;
-    FLASH_EraseInitTypeDef settings;
 
     DEBUG("Started\r\n");
-
-    /* Device operating range: 2.7V to 3.6V */
-    settings.VoltageRange = FLASH_VOLTAGE_RANGE_3;
-
-    /* Only available bank */
-    settings.Banks = FLASH_BANK_1;
 
     type = parser_get_val(phPrsr, TXT_PAR_FLASH_ERASE_TYPE,
             strlen(TXT_PAR_FLASH_ERASE_TYPE));
@@ -98,8 +87,6 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
     if (strncmp(type, TXT_PAR_FLASH_ERASE_TYPE_SECT,
             strlen(TXT_PAR_FLASH_ERASE_TYPE_SECT)) == 0)
     {
-        settings.TypeErase = FLASH_TYPEERASE_SECTORS;
-
         /* Get first sector to write to */
         charSect = parser_get_val(phPrsr, TXT_PAR_FLASH_ERASE_SECT,
                 strlen(TXT_PAR_FLASH_ERASE_SECT));
@@ -113,12 +100,6 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
         eCode = str2ui32(charSect, strlen(charSect), &sect, 10);
         ERR_CHECK(eCode);
 
-        /* Check validity of given sector */
-        if (sect >= FLASH_SECTOR_TOTAL)
-        {
-            return CBL_ERR_INV_SECT;
-        }
-
         /* Get how many sectors to erase */
         charCount = parser_get_val(phPrsr, TXT_PAR_FLASH_ERASE_COUNT,
                 strlen(TXT_PAR_FLASH_ERASE_COUNT));
@@ -127,57 +108,24 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
             /* No sector count present throw error */
             return CBL_ERR_NEED_PARAM;
         }
+
         /* Fill count */
         eCode = str2ui32(charCount, strlen(charCount), &count, 10);
         ERR_CHECK(eCode);
 
-        if (sect + count - 1 >= FLASH_SECTOR_TOTAL)
-        {
-            /* Last sector to delete doesn't exist, throw error */
-            return CBL_ERR_INV_SECT_COUNT;
-        }
-
-        settings.Sector = sect;
-        settings.NbSectors = count;
+        eCode = flash_erase_sector(sect, count);
+        ERR_CHECK(eCode);
     }
     else if (strncmp(type, TXT_PAR_FLASH_ERASE_TYPE_MASS,
             strlen(TXT_PAR_FLASH_ERASE_TYPE_MASS)) == 0)
     {
-        /* Erase all sectors */
-        settings.TypeErase = FLASH_TYPEERASE_MASSERASE;
+        eCode = flash_erase_mass();
+        ERR_CHECK(eCode);
     }
     else
     {
         /* Type has wrong value */
         return CBL_ERR_ERASE_INV_TYPE;
-    }
-
-    /* Turn on the blue LED, signalizing flash manipulation */
-    LED_ON(BLUE);
-
-    /* Unlock flash control registers */
-    if (HAL_FLASH_Unlock() != HAL_OK)
-    {
-        return CBL_ERR_HAL_UNLOCK;
-    }
-
-    /* Erase selected sectors */
-    HALCode = HAL_FLASHEx_Erase( &settings, &sectorCode);
-
-    LED_OFF(BLUE);
-
-    /* Lock flash control registers */
-    HAL_FLASH_Lock();
-
-    /* Check for errors */
-    if (HALCode != HAL_OK)
-    {
-        return CBL_ERR_HAL_ERASE;
-    }
-    if (sectorCode != 0xFFFFFFFFU) /*!< 0xFFFFFFFFU means success */
-    {
-        /* Shouldn't happen as we check for HALCode before, but let's check */
-        return CBL_ERR_SECTOR;
     }
 
     /* Send response */
@@ -357,8 +305,153 @@ cbl_err_code_t cmd_mem_read (parser_t * phPrsr)
     return eCode;
 }
 
-// implement write sector
-// implement mass write
+/**
+ * @brief Erase flash sectors
+ *
+ * @param sect Initial sector to erase
+ * @param count Number of sectors to erase
+ */
+cbl_err_code_t flash_erase_sector (uint32_t sect, uint32_t count)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    FLASH_EraseInitTypeDef settings;
+    HAL_StatusTypeDef HALCode;
+    uint32_t sectorCode;
+
+    /* Check validity of given sector */
+    if (sect >= FLASH_SECTOR_TOTAL)
+    {
+        return CBL_ERR_INV_SECT;
+    }
+
+    if (sect + count - 1 >= FLASH_SECTOR_TOTAL)
+    {
+        /* Last sector to delete doesn't exist, throw error */
+        return CBL_ERR_INV_SECT_COUNT;
+    }
+
+    /* Device operating range: 2.7V to 3.6V */
+    settings.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    /* Only available bank */
+    settings.Banks = FLASH_BANK_1;
+    settings.TypeErase = FLASH_TYPEERASE_SECTORS;
+    settings.Sector = sect;
+    settings.NbSectors = count;
+
+    /* Turn on the blue LED, signalizing flash manipulation */
+    LED_ON(BLUE);
+
+    /* Unlock flash control registers */
+    if (HAL_FLASH_Unlock() != HAL_OK)
+    {
+        return CBL_ERR_HAL_UNLOCK;
+    }
+
+    /* Erase selected sectors */
+    HALCode = HAL_FLASHEx_Erase( &settings, &sectorCode);
+
+    LED_OFF(BLUE);
+
+    /* Lock flash control registers */
+    HAL_FLASH_Lock();
+
+    /* Check for errors */
+    if (HALCode != HAL_OK)
+    {
+        return CBL_ERR_HAL_ERASE;
+    }
+    if (sectorCode != 0xFFFFFFFFU) /*!< 0xFFFFFFFFU means success */
+    {
+        /* Shouldn't happen as we check for HALCode before, but let's check */
+        return CBL_ERR_SECTOR;
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Erase whole flash
+ */
+cbl_err_code_t flash_erase_mass (void)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    FLASH_EraseInitTypeDef settings;
+    HAL_StatusTypeDef HALCode;
+    uint32_t sectorCode;
+
+    /* Device operating range: 2.7V to 3.6V */
+    settings.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+
+    /* Only available bank */
+    settings.Banks = FLASH_BANK_1;
+
+    /* Erase all sectors */
+    settings.TypeErase = FLASH_TYPEERASE_MASSERASE;
+
+    /* Turn on the blue LED, signalizing flash manipulation */
+    LED_ON(BLUE);
+
+    /* Unlock flash control registers */
+    if (HAL_FLASH_Unlock() != HAL_OK)
+    {
+        return CBL_ERR_HAL_UNLOCK;
+    }
+
+    /* Erase selected sectors */
+    HALCode = HAL_FLASHEx_Erase( &settings, &sectorCode);
+
+    LED_OFF(BLUE);
+
+    /* Lock flash control registers */
+    HAL_FLASH_Lock();
+
+    /* Check for errors */
+    if (HALCode != HAL_OK)
+    {
+        return CBL_ERR_HAL_ERASE;
+    }
+
+    if (sectorCode != 0xFFFFFFFFU) /*!< 0xFFFFFFFFU means success */
+    {
+        /* Shouldn't happen as we check for HALCode before, but let's check */
+        return CBL_ERR_SECTOR;
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Uses HAL level commands to write data to memory
+ * @param addr Starting address to write bytes to
+ * @param data Array of bytes to be writen
+ * @param len length of 'data'
+ */
+cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data, uint32_t len)
+{
+    HAL_StatusTypeDef HALCode;
+
+    /* Unlock flash */
+    if (HAL_FLASH_Unlock() != HAL_OK)
+    {
+        return CBL_ERR_HAL_UNLOCK;
+    }
+
+    /* Write to flash */
+    for (uint32_t iii = 0u; iii < len; iii++)
+    {
+        /* Write a byte */
+        HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, addr + iii,
+                data[iii]);
+        if (HALCode != HAL_OK)
+        {
+            HAL_FLASH_Lock();
+            return CBL_ERR_HAL_WRITE;
+        }
+    }
+
+    HAL_FLASH_Lock();
+    return CBL_ERR_OK;
+}
 
 /**
  * @brief Gets parameters from parser handle
@@ -419,40 +512,6 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
     }
 
     return eCode;
-}
-
-/**
- * @brief Uses HAL level commands to write data to memory
- * @param addr Starting address to write bytes to
- * @param data Array of bytes to be writen
- * @param len length of 'data'
- */
-static cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
-        uint32_t len)
-{
-    HAL_StatusTypeDef HALCode;
-
-    /* Unlock flash */
-    if (HAL_FLASH_Unlock() != HAL_OK)
-    {
-        return CBL_ERR_HAL_UNLOCK;
-    }
-
-    /* Write to flash */
-    for (uint32_t iii = 0u; iii < len; iii++)
-    {
-        /* Write a byte */
-        HALCode = HAL_FLASH_Program(FLASH_TYPEPROGRAM_BYTE, addr + iii,
-                data[iii]);
-        if (HALCode != HAL_OK)
-        {
-            HAL_FLASH_Lock();
-            return CBL_ERR_HAL_WRITE;
-        }
-    }
-
-    HAL_FLASH_Lock();
-    return CBL_ERR_OK;
 }
 
 /*** end of file ***/

@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include "cbl_cmds_memory.h"
 #include "cbl_boot_record.h"
 
 static volatile cbl_record_t cbl_record __attribute__((section(".appbr")));
@@ -32,19 +33,13 @@ volatile cbl_record_t * cbl_boot_record_get (void)
 cbl_err_code_t cbl_boot_record_set (cbl_record_t * p_new_cbl_record)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-#if 0
     uint32_t len = (uint32_t)sizeof(cbl_record_t);
     uint8_t *p_new_byte = (uint8_t *)p_new_cbl_record;
 
-    // erase sector containing boot record
-    if (eCode != CBL_ERR_OK)
-    {
-        return eCode;
-    }
+    eCode = flash_erase_sector(BOOT_RECORD_SECTOR, BOOT_RECORD_MAX_SECTORS);
+    ERR_CHECK(eCode);
 
-    // write boot record
-    eCode = cbl_program_bytes(p_new_byte, BOOT_RECORD_START, len);
-#endif
+    eCode = write_program_bytes(BOOT_RECORD_START, p_new_byte, len);
     return eCode;
 }
 /*** end of file ***/
