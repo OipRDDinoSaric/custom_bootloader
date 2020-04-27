@@ -50,7 +50,11 @@ typedef enum
     CBL_ERR_TEMP_NOT_VAL1, /*!< Explanation of error. DON'T FORGET HANDLER */
     CBL_ERR_UNSUP_CKSUM, /*!< Checksum not supported for received data */
     CBL_ERR_CRC_LEN, /*!< Invalid length for CRC check */
-    CBL_ERR_SHA256_LEN /*!< Invalid length for sha256 */
+    CBL_ERR_SHA256_LEN, /*!< Invalid length for sha256 */
+    CBL_ERR_NEW_APP_LEN, /*!< New user application is too long */
+    CBL_ERR_NOT_IMPL, /*!< Requested action is not implemented */
+    CBL_ERR_APP_TYPE, /*!< Invalid app type requested */
+    CBL_ERR_NULL_PAR /*!< NULL parameter received by function */
 } cbl_err_code_t;
 
 void CBL_run_system (void);

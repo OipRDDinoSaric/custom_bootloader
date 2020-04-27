@@ -17,7 +17,6 @@ cbl_err_code_t cmd_template (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     char *charTemp = NULL;
-    char msg[] = "Template success";
 
     DEBUG("Started\r\n");
 
@@ -39,7 +38,8 @@ cbl_err_code_t cmd_template (parser_t * phPrsr)
 
 
     /* Do function stuff */
-    send_to_host(msg, strlen(msg));
+
+    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
 
     return eCode;
 }

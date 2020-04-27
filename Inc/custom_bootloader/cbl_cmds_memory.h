@@ -36,7 +36,7 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr);
 cbl_err_code_t cmd_mem_read (parser_t * phPrsr);
 cbl_err_code_t flash_erase_sector (uint32_t sect, uint32_t count);
 cbl_err_code_t flash_erase_mass (void);
-cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data,
-        uint32_t len);
+cbl_err_code_t write_program_bytes (uint32_t addr, uint8_t * data, uint32_t len);
+cbl_err_code_t flash_write (uint32_t start, uint32_t len, cksum_t cksum);
 #endif /* CBL_CMDS_MEMORY_H */
 /*** end of file ***/

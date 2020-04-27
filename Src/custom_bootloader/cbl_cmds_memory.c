@@ -150,110 +150,17 @@ cbl_err_code_t cmd_flash_erase (parser_t * phPrsr)
 cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    uint8_t write_buf[FLASH_WRITE_SZ] = { 0 };
     uint32_t start;
     uint32_t len;
     cksum_t cksum = CKSUM_UNDEF;
-    uint32_t n_chunks;
-    uint32_t iii = 0;
-    uint32_t left_to_write;
-    uint32_t chunk_addr;
-    char chunk_succ[] = "\r\nchunk OK\r\n";
-    SHA256_CTX h_cksum_sha256 = { 0 };
-    char chunk_info[64] = { 0 };
-    uint32_t cksum_len = 0;
 
     DEBUG("Started\r\n");
 
     eCode = write_get_params(phPrsr, &start, &len, &cksum);
     ERR_CHECK(eCode);
 
-    /* Get number of chunks */
-    n_chunks = len / FLASH_WRITE_SZ;
-    n_chunks = len % FLASH_WRITE_SZ ? n_chunks + 1 : n_chunks;
-
-    /* Notify host how many chunks are expected */
-    snprintf(chunk_info, sizeof(chunk_info), "\r\nchunks:%lu\r\n", n_chunks);
-    send_to_host(chunk_info, strlen(chunk_info));
-
-    left_to_write = len;
-    chunk_addr = start;
-
-    /* Second parameter is used only when sha256 is used */
-    init_checksum(cksum, &h_cksum_sha256);
-
-    /* Get chunks one by one from host, and write them to memory, accumulating
-     * checksum */
-    while (iii < n_chunks)
-    {
-        uint32_t chunk_len = ui32_min(left_to_write, (uint32_t)FLASH_WRITE_SZ);
-
-        /* Notify host about current chunk number and length */
-        snprintf(chunk_info, sizeof(chunk_info),
-                "\r\nchunk:%lu|length:%lu|address:0x%08lx\r\n", iii, chunk_len,
-                chunk_addr);
-        send_to_host(chunk_info, strlen(chunk_info));
-
-        /* Reset UART byte counter */
-        gRxCmdCntr = 0;
-
-        /* Request 'chunk_len' bytes */
-        eCode = recv_from_host_start(write_buf, chunk_len);
-        ERR_CHECK(eCode);
-
-        /* Notify host to send the bytes */
-        send_to_host(TXT_RESP_FLASH_WRITE_READY,
-                strlen(TXT_RESP_FLASH_WRITE_READY));
-
-        while (gRxCmdCntr != 1)
-        {
-            /* Wait for 'len' bytes */
-        }
-
-        LED_ON(BLUE);
-        eCode = write_program_bytes(chunk_addr, write_buf, chunk_len);
-        LED_OFF(BLUE);
-        ERR_CHECK(eCode);
-
-        /* NOTE: Last parameter is used only when sha256 is used */
-        accumulate_checksum(write_buf, chunk_len, cksum, &h_cksum_sha256);
-
-        eCode = send_to_host(chunk_succ, strlen(chunk_succ));
-        ERR_CHECK(eCode);
-
-        chunk_addr += chunk_len;
-        left_to_write -= chunk_len;
-        iii++;
-    }
-
-    if (cksum != CKSUM_NO)
-    {
-        cksum_len = checksum_get_length(cksum);
-
-        /* Notify host cksum is expected */
-        snprintf(chunk_info, sizeof(chunk_info), "\r\nchecksum|length:%lu\r\n",
-                cksum_len);
-        send_to_host(chunk_info, strlen(chunk_info));
-
-        /* Reset UART byte counter */
-        gRxCmdCntr = 0;
-
-        /* Request 'chunk_len' bytes */
-        eCode = recv_from_host_start(write_buf, cksum_len);
-        ERR_CHECK(eCode);
-
-        /* Notify host to send the bytes */
-        send_to_host(TXT_RESP_FLASH_WRITE_READY,
-                strlen(TXT_RESP_FLASH_WRITE_READY));
-
-        while (gRxCmdCntr != 1)
-        {
-            /* Wait for 'cksum_len' bytes */
-        }
-
-        eCode = verify_checksum(write_buf, cksum_len, cksum, &h_cksum_sha256);
-        ERR_CHECK(eCode);
-    }
+    eCode = flash_write(start, len, cksum);
+    ERR_CHECK(eCode);
 
     eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
 
@@ -417,6 +324,124 @@ cbl_err_code_t flash_erase_mass (void)
         return CBL_ERR_SECTOR;
     }
 
+    return eCode;
+}
+
+/**
+ * @brief  Writes to flash, sector to be written into shall be erased prior
+ *
+ * @param start Starting address
+ * @param len   Number of bytes to write without checksum.
+ * @param cksum Checksum to use
+ *
+ * @note    If using checksum, data will be written to memory before checking
+ *          for checksum!
+ */
+cbl_err_code_t flash_write (uint32_t start, uint32_t len, cksum_t cksum)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    uint8_t write_buf[FLASH_WRITE_SZ] = { 0 };
+    uint32_t n_chunks;
+    uint32_t iii = 0;
+    uint32_t left_to_write;
+    uint32_t chunk_addr;
+    char chunk_succ[] = "\r\nchunk OK\r\n";
+    SHA256_CTX h_cksum_sha256 = { 0 };
+    char chunk_info[64] = { 0 };
+    uint32_t cksum_len = 0;
+
+    /* Get number of chunks */
+    n_chunks = len / FLASH_WRITE_SZ;
+    n_chunks = len % FLASH_WRITE_SZ ? n_chunks + 1 : n_chunks;
+
+    /* Notify host how many chunks are expected */
+    snprintf(chunk_info, sizeof(chunk_info), "\r\nchunks:%lu\r\n", n_chunks);
+    eCode = send_to_host(chunk_info, strlen(chunk_info));
+    ERR_CHECK(eCode);
+
+    left_to_write = len;
+    chunk_addr = start;
+
+    /* Second parameter is used only when sha256 is used */
+    init_checksum(cksum, &h_cksum_sha256);
+
+    /* Get chunks one by one from host, and write them to memory, accumulating
+     * checksum */
+    while (iii < n_chunks)
+    {
+        uint32_t chunk_len = ui32_min(left_to_write, (uint32_t)FLASH_WRITE_SZ);
+
+        /* Notify host about current chunk number and length */
+        snprintf(chunk_info, sizeof(chunk_info),
+                "\r\nchunk:%lu|length:%lu|address:0x%08lx\r\n", iii, chunk_len,
+                chunk_addr);
+        eCode = send_to_host(chunk_info, strlen(chunk_info));
+        ERR_CHECK(eCode);
+
+        /* Reset UART byte counter */
+        gRxCmdCntr = 0;
+
+        /* Notify host to send the bytes */
+        eCode = send_to_host(TXT_RESP_FLASH_WRITE_READY,
+                strlen(TXT_RESP_FLASH_WRITE_READY));
+        ERR_CHECK(eCode);
+
+        /* Request 'chunk_len' bytes */
+        eCode = recv_from_host_start(write_buf, chunk_len);
+        ERR_CHECK(eCode);
+
+
+        while (gRxCmdCntr != 1)
+        {
+            /* Wait for 'len' bytes */
+        }
+
+        LED_ON(BLUE);
+        eCode = write_program_bytes(chunk_addr, write_buf, chunk_len);
+        LED_OFF(BLUE);
+        ERR_CHECK(eCode);
+
+        /* NOTE: Last parameter is used only when sha256 is used */
+        accumulate_checksum(write_buf, chunk_len, cksum, &h_cksum_sha256);
+
+        eCode = send_to_host(chunk_succ, strlen(chunk_succ));
+        ERR_CHECK(eCode);
+
+        chunk_addr += chunk_len;
+        left_to_write -= chunk_len;
+        iii++;
+    }
+
+    if (cksum != CKSUM_NO)
+    {
+        cksum_len = checksum_get_length(cksum);
+
+        /* Notify host cksum is expected */
+        snprintf(chunk_info, sizeof(chunk_info), "\r\nchecksum|length:%lu\r\n",
+                cksum_len);
+        eCode = send_to_host(chunk_info, strlen(chunk_info));
+        ERR_CHECK(eCode);
+
+        /* Reset UART byte counter */
+        gRxCmdCntr = 0;
+
+        /* Notify host to send the bytes */
+        eCode = send_to_host(TXT_RESP_FLASH_WRITE_READY,
+                strlen(TXT_RESP_FLASH_WRITE_READY));
+        ERR_CHECK(eCode);
+
+        /* Request 'chunk_len' bytes */
+        eCode = recv_from_host_start(write_buf, cksum_len);
+        ERR_CHECK(eCode);
+
+        while (gRxCmdCntr != 1)
+        {
+            /* Wait for 'cksum_len' bytes */
+        }
+
+        eCode = verify_checksum(write_buf, cksum_len, cksum, &h_cksum_sha256);
+        ERR_CHECK(eCode);
+    }
     return eCode;
 }
 

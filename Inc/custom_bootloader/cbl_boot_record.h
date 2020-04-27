@@ -40,22 +40,27 @@ typedef enum
 
 typedef struct
 {
-    cksum_t cksum_type; /* Size of 4 bytes assumed */
-    app_type_t app_type; /* Size of 4 bytes assumed */
-    char cksum_val[256]; /* WARNING: Char of size 1 byte assumed */
+    /*WARNING: Size of 4 bytes assumed */
+    cksum_t cksum_used; /*!< Checksum used for transmition */
+    /*WARNING: Size of 4 bytes assumed */
+    app_type_t app_type;
     uint32_t len;
-} cbl_app_meta_t;
+} app_meta_t;
 
 typedef struct
 {
-    bool new_app_ready; /* WARNING: Size of 1 byte assumed */
-    cbl_app_meta_t act_app; /*!< Active application meta data */
-    cbl_app_meta_t new_app; /*!< New application meta data */
+    bool is_new_app_ready; /* WARNING: Size of 1 byte assumed */
+    app_meta_t act_app; /*!< Active application meta data */
+    app_meta_t new_app; /*!< New application meta data */
+    uint32_t key; /*!< Used to check if boot_record was initialized.
+                       Boot record user shall ignore */
     uint8_t reserved[255];
-} cbl_record_t;
+} boot_record_t;
 
-volatile cbl_record_t * cbl_boot_record_get (void);
-cbl_err_code_t cbl_boot_record_set (cbl_record_t * new_bl_record);
+boot_record_t * boot_record_get (void);
+cbl_err_code_t boot_record_set (boot_record_t * p_new_boot_record);
+cbl_err_code_t enum_app_type (char *char_app_type, uint32_t len,
+        app_type_t * p_app_type);
 
 #endif /* CBL_CMDS_TEMPLATE_H */
 /*** end of file ***/

@@ -28,6 +28,12 @@
 #if true
 #include "cbl_cmds_etc.h"
 #endif
+#if true
+#include "cbl_cmds_update_new.h"
+#endif
+#if true
+#include "cbl_cmds_update_act.h"
+#endif
 #if false
 #include "cbl_cmds_template.h"
 #endif
@@ -61,7 +67,9 @@ typedef enum
     CMD_FLASH_WRITE,
     CMD_EXIT,
     CMD_TEMPLATE,
-    CMD_RESET
+    CMD_RESET,
+    CMD_UPDATE_NEW,
+    CMD_UPDATE_ACT
 } cmd_t;
 
 static void shell_init (void);
@@ -280,7 +288,8 @@ static cbl_err_code_t run_shell_system (void)
                 char bye[] = "Exiting\r\n\r\n";
 
                 INFO(bye);
-                send_to_host(bye, strlen(bye));
+                eCode = send_to_host(bye, strlen(bye));
+                ERR_CHECK(eCode);
 
                 isExitNeeded = true;
             }
@@ -434,7 +443,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
 #ifdef CBL_CMDS_OPT_BYTES_H
     else if (len == strlen(TXT_CMD_GET_RDP_LVL)
             && strncmp(buf, TXT_CMD_GET_RDP_LVL, strlen(TXT_CMD_GET_RDP_LVL))
-            == 0)
+                    == 0)
     {
         *pCmdCode = CMD_GET_RDP_LVL;
     }
@@ -465,7 +474,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_ERASE)
             && strncmp(buf, TXT_CMD_FLASH_ERASE, strlen(TXT_CMD_FLASH_ERASE))
-            == 0)
+                    == 0)
     {
         *pCmdCode = CMD_FLASH_ERASE;
     }
@@ -477,11 +486,27 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_WRITE)
             && strncmp(buf, TXT_CMD_FLASH_WRITE, strlen(TXT_CMD_FLASH_WRITE))
-            == 0)
+                    == 0)
     {
         *pCmdCode = CMD_FLASH_WRITE;
     }
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_UPDATE_NEW_H
+    else if (len == strlen(TXT_CMD_UPDATE_NEW)
+            && strncmp(buf, TXT_CMD_UPDATE_NEW, strlen(TXT_CMD_UPDATE_NEW))
+                    == 0)
+    {
+        *pCmdCode = CMD_UPDATE_NEW;
+    }
+#endif /* CBL_CMDS_UPDATE_NEW_H */
+#ifdef CBL_CMDS_UPDATE_ACT_H
+    else if (len == strlen(TXT_CMD_UPDATE_ACT)
+            && strncmp(buf, TXT_CMD_UPDATE_ACT, strlen(TXT_CMD_UPDATE_ACT))
+                    == 0)
+    {
+        *pCmdCode = CMD_UPDATE_ACT;
+    }
+#endif /* CBL_CMDS_UPDATE_ACT_H */
 #ifdef CBL_CMDS_TEMPLATE_H
     /* Add a new enum value in cmd_t and check for it here */
     else if (len == strlen(TXT_CMD_TEMPLATE)
@@ -536,67 +561,81 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         break;
 
 #ifdef CBL_CMDS_OPT_BYTES_H
-            case CMD_GET_RDP_LVL:
-            {
-                eCode = cmd_get_rdp_lvl(phPrsr);
-            }
-            break;
+        case CMD_GET_RDP_LVL:
+        {
+            eCode = cmd_get_rdp_lvl(phPrsr);
+        }
+        break;
 
-            case CMD_EN_WRITE_PROT:
-            {
-                eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
-            }
-            break;
+        case CMD_EN_WRITE_PROT:
+        {
+            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
+        }
+        break;
 
-            case CMD_DIS_WRITE_PROT:
-            {
-                eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
-            }
-            break;
+        case CMD_DIS_WRITE_PROT:
+        {
+            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
+        }
+        break;
 
-            case CMD_READ_SECT_PROT_STAT:
-            {
-                eCode = cmd_get_write_prot(phPrsr);
-            }
-            break;
+        case CMD_READ_SECT_PROT_STAT:
+        {
+            eCode = cmd_get_write_prot(phPrsr);
+        }
+        break;
 #endif /* CBL_CMDS_OPT_BYTES_H */
 #ifdef CBL_CMDS_MEMORY_H
-            case CMD_JUMP_TO:
-            {
-                eCode = cmd_jump_to(phPrsr);
-            }
-            break;
+        case CMD_JUMP_TO:
+        {
+            eCode = cmd_jump_to(phPrsr);
+        }
+        break;
 
-            case CMD_FLASH_ERASE:
-            {
-                eCode = cmd_flash_erase(phPrsr);
-            }
-            break;
+        case CMD_FLASH_ERASE:
+        {
+            eCode = cmd_flash_erase(phPrsr);
+        }
+        break;
 
-            case CMD_MEM_READ:
-            {
-                eCode = cmd_mem_read(phPrsr);
-            }
-            break;
+        case CMD_MEM_READ:
+        {
+            eCode = cmd_mem_read(phPrsr);
+        }
+        break;
 
-            case CMD_FLASH_WRITE:
-            {
-                eCode = cmd_flash_write(phPrsr);
-            }
-            break;
+        case CMD_FLASH_WRITE:
+        {
+            eCode = cmd_flash_write(phPrsr);
+        }
+        break;
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_UPDATE_NEW_H
+        case CMD_UPDATE_NEW:
+        {
+            eCode = cmd_update_new(phPrsr);
+        }
+        break;
+#endif /* CBL_CMDS_UPDATE_NEW_H */
+#ifdef CBL_CMDS_UPDATE_ACT_H
+        case CMD_UPDATE_ACT:
+        {
+            eCode = cmd_update_act(phPrsr);
+        }
+        break;
+#endif /* CBL_CMDS_UPDATE_ACT_H */
 #ifdef CBL_CMDS_ETC_H
-            case CMD_CID:
-            {
-                eCode = cmd_cid(phPrsr);
-            }
-            break;
+        case CMD_CID:
+        {
+            eCode = cmd_cid(phPrsr);
+        }
+        break;
 
-            case CMD_EXIT:
-            {
-                eCode = cmd_exit(phPrsr);
-            }
-            break;
+        case CMD_EXIT:
+        {
+            eCode = cmd_exit(phPrsr);
+        }
+        break;
 #endif /* CBL_CMDS_ETC_H */
 #ifdef CBL_CMDS_TEMPLATE_H
             /* Add a new case for the enumerator and call function handler */
@@ -643,7 +682,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_READ_OF:
         {
-            char msg[] = "\r\nERROR: Command too long\r\n";
+            const char msg[] = "\r\nERROR: Command too long\r\n";
             WARNING("Overflow while reading happened\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
@@ -695,7 +734,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_CMD_UNDEF:
         {
-            char msg[] = "\r\nERROR: Invalid command\r\n";
+            const char msg[] = "\r\nERROR: Invalid command\r\n";
             INFO("Client sent an invalid command\r\n");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
@@ -704,7 +743,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_NEED_PARAM:
         {
-            char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
+            const char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
             INFO("Command is missing parameter(s)");
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
@@ -713,7 +752,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_JUMP_INV_ADDR:
         {
-            char msg[] = "\r\nERROR: Invalid address\r\n"
+            const char msg[] = "\r\nERROR: Invalid address\r\n"
                     "Jumpable regions: FLASH, SRAM1, SRAM2, CCMRAM, "
                     "BKPSRAM, SYSMEM and EXTMEM (if connected)\r\n";
 
@@ -725,7 +764,8 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_SECTOR:
         {
-            char msg[] = "\r\nERROR: Internal error while erasing sectors\r\n";
+            const char msg[] =
+                    "\r\nERROR: Internal error while erasing sectors\r\n";
 
             WARNING("Error while erasing sectors\r\n");
             send_to_host(msg, strlen(msg));
@@ -735,7 +775,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_INV_SECT:
         {
-            char msg[] = "\r\nERROR: Wrong sector given\r\n";
+            const char msg[] = "\r\nERROR: Wrong sector given\r\n";
 
             INFO("Wrong sector given\r\n");
             send_to_host(msg, strlen(msg));
@@ -745,7 +785,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_INV_SECT_COUNT:
         {
-            char msg[] = "\r\nERROR: Wrong sector count given\r\n";
+            const char msg[] = "\r\nERROR: Wrong sector count given\r\n";
 
             INFO("Wrong sector count given\r\n");
             send_to_host(msg, strlen(msg));
@@ -755,7 +795,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_WRITE_INV_ADDR:
         {
-            char msg[] = "\r\nERROR: Invalid address range entered\r\n";
+            const char msg[] = "\r\nERROR: Invalid address range entered\r\n";
 
             INFO("Invalid address range entered for writing\r\n");
             send_to_host(msg, strlen(msg));
@@ -765,7 +805,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_INV_SZ:
         {
-            char msg[] = "\r\nERROR: Invalid length\r\n";
+            const char msg[] = "\r\nERROR: Invalid length\r\n";
 
             INFO("User entered length 0 or too big\r\n");
             send_to_host(msg, strlen(msg));
@@ -775,7 +815,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_HAL_WRITE:
         {
-            char msg[] = "\r\nERROR: Error while writing to flash."
+            const char msg[] = "\r\nERROR: Error while writing to flash."
                     " Retry last message.\r\n";
 
             INFO("Error while writing to flash on HAL level\r\n");
@@ -786,7 +826,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_ERASE_INV_TYPE:
         {
-            char msg[] = "\r\nERROR: Invalid erase type\r\n";
+            const char msg[] = "\r\nERROR: Invalid erase type\r\n";
 
             INFO("User entered invalid erase type\r\n");
             send_to_host(msg, strlen(msg));
@@ -796,7 +836,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_HAL_ERASE:
         {
-            char msg[] = "\r\nERROR: HAL error while erasing sectors \r\n";
+            const char msg[] = "\r\nERROR: HAL error while erasing sectors \r\n";
 
             INFO("HAL error while erasing sector\r\n");
             send_to_host(msg, strlen(msg));
@@ -806,7 +846,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_HAL_UNLOCK:
         {
-            char msg[] = "\r\nERROR: Unlocking flash failed\r\n";
+            const char msg[] = "\r\nERROR: Unlocking flash failed\r\n";
 
             WARNING("Unlocking flash with HAL failed\r\n");
             send_to_host(msg, strlen(msg));
@@ -823,7 +863,8 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_NOT_DIG:
         {
-            char msg[] = "\r\nERROR: Number parameter contains letters\r\n";
+            const char msg[] =
+                    "\r\nERROR: Number parameter contains letters\r\n";
 
             WARNING("User entered number parameter containing letters\r\n");
             send_to_host(msg, strlen(msg));
@@ -833,7 +874,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_1ST_NOT_ZERO:
         {
-            char msg[] =
+            const char msg[] =
                     "\r\nERROR: Number parameter must have '0' at the start "
                             " when 'x' is present\r\n";
 
@@ -846,7 +887,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_CKSUM_WRONG:
         {
-            char msg[] = "\r\nERROR: Data corrupted during transport"
+            const char msg[] = "\r\nERROR: Data corrupted during transport"
                     " (Invalid checksum). Retry last message.\r\n";
 
             WARNING("Data corrupted during transport, invalid checksum\r\n");
@@ -857,7 +898,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_TEMP_NOT_VAL1:
         {
-            char msg[] = "\r\nERROR: Value for parameter invalid...\r\n";
+            const char msg[] = "\r\nERROR: Value for parameter invalid...\r\n";
 
             WARNING("User entered wrong param. value in template function\r\n");
             send_to_host(msg, strlen(msg));
@@ -867,7 +908,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_UNSUP_CKSUM:
         {
-            char msg[] = "\r\nERROR: Requested checksum not supported\r\n";
+            const char msg[] = "\r\nERROR: Requested checksum not supported\r\n";
 
             WARNING("User requested checksum not supported\r\n");
             send_to_host(msg, strlen(msg));
@@ -877,7 +918,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_CRC_LEN:
         {
-            char msg[] = "\r\nERROR: Length for CRC32 must be "
+            const char msg[] = "\r\nERROR: Length for CRC32 must be "
                     "divisible by 4 \r\n";
 
             WARNING("User entered invalid length for CRC32\r\n");
@@ -888,9 +929,53 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
         case CBL_ERR_SHA256_LEN:
         {
-            char msg[] = "\r\nERROR: Invalid length for sha256\r\n";
+            const char msg[] = "\r\nERROR: Invalid length for sha256\r\n";
 
             WARNING("User entered invalid length for sha256\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_NEW_APP_LEN:
+        {
+            const char msg[] = "\r\nERROR: New app is too long. Aborting\r\n";
+
+            WARNING("New user application is too long"
+                    "to for updating\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_NOT_IMPL:
+        {
+            const char msg[] =
+                    "\r\nERROR: Requested action is not implemented\r\n";
+
+            WARNING("Requested action is not implemented\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_APP_TYPE:
+        {
+            const char msg[] = "\r\nERROR: Invalid user application type\r\n";
+
+            WARNING("Invalid user application type\r\n");
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_NULL_PAR:
+        {
+            const char msg[] = "\r\nERROR: NULL sent as a parameter"
+                    " of a function\r\n";
+
+            WARNING("NULL sent as a parameter of a function\r\n");
+
             send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
