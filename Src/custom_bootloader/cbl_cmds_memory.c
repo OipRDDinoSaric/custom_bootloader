@@ -267,7 +267,7 @@ cbl_err_code_t cmd_flash_write (parser_t * phPrsr)
         LED_OFF(BLUE);
         ERR_CHECK(eCode);
 
-        /* Second parameter is used only when sha256 is used */
+        /* NOTE: Last parameter is used only when sha256 is used */
         accumulate_checksum(write_buf, chunk_len, cksum, &h_cksum_sha256);
 
         eCode = send_to_host(chunk_succ, strlen(chunk_succ));
@@ -410,12 +410,13 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
         return CBL_ERR_WRITE_INV_ADDR;
     }
 
-    if (( *p_len) == 0)
-    {
-        return CBL_ERR_INV_SZ;
-    }
-
     eCode = enum_checksum(charChecksum, strlen(charChecksum), p_cksum);
+    ERR_CHECK(eCode);
+
+    if ((( *p_len) == 0) || (( *p_cksum == CKSUM_CRC32) && ( *p_len % 4 != 0)))
+    {
+        return CBL_ERR_CRC_LEN;
+    }
 
     return eCode;
 }
