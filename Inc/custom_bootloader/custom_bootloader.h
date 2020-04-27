@@ -12,7 +12,7 @@
 
 #include <stdlib.h>
 
-#define CBL_VERSION "v1.0"
+#define CBL_VERSION "v1.1"
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
