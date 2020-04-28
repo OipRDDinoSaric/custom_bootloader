@@ -229,7 +229,7 @@ Parameters:
 
 Execute command: 
 
-    > update-act force=true
+    > update-new count=4 type=bin cksum=sha256
 Response: 
 
     No update needed for user application
@@ -245,8 +245,32 @@ Parameters:
 Execute command: 
 
     > en-write-prot mask=0xFF0
+    
 Response: 
 
+    chunks:1
+
+    chunk:0|length:4|address:0x08080000
+
+    ready
+Send bytes:
+
+    <4 bytes>
+    
+Response:
+
+    chunk OK
+
+    checksum|length:32
+
+    ready
+ 
+Send checksum:
+     
+     <32 bytes>
+     
+Response:
+ 
     OK
     
 <a name="cmd_dis-write-prot"></a>
