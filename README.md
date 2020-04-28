@@ -222,8 +222,10 @@ Response:
 #### [update-act](#cmd_update-act) : Updates active application from new application memory area
 Parameters:
 - [force] - Forces update even if not needed
-                "true" - Force the update
-                "false" - Don't force the update
+
+   - "true" - Force the update
+                
+   - "false" - Don't force the update
 
 
 Execute command: 
