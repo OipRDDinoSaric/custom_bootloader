@@ -44,6 +44,8 @@ On the other hand, if user doesn't need the debug output, build and flash the pr
 * [flash-erase](#cmd_flash-erase) : Erases flash memory
 * [flash-write](#cmd_flash-write) : Writes to flash
 * [mem-read](#cmd_mem-read) : Read bytes from memory
+* [update-act](#cmd_update-act) : Updates active application from new application memory area
+* [update-new](#cmd_update-new) : Updates new application
 * [en-write-prot](#cmd_en-write-prot) : Enables write protection per sector
 * [dis-write-prot](#cmd_dis-write-prot) : Disables write protection per sector
 * [get-write-prot](#cmd_get-write-prot) : Returns bit array of sector write protection
@@ -135,15 +137,15 @@ Response:
 
    
 <a name="cmd_flash-write"> </a>
-####  [flash-write](#cmd_flash-write)—Writes to flash, returns \r\nready\r\n when ready to receive bytes
+####  [flash-write](#cmd_flash-write)—Writes to flash byte by byte. Splits data into chunks
 
 Parameters:
 
  - start - Starting address in hex format (e.g. 0x12345678), 0x can be omitted
      
- - count - Number of bytes to write + checksum length. Chunk length is 5120
+ - count - Number of bytes to write, without checksum. Chunk size: 5120
  
- - [cksum] - Defines the checksum to use. If not present no checksum is assumed.
+ - [cksum] - Defines the checksum to use. If not present no checksum is assumed. WARNING: Even if checksum is wrong data will be written into flash memory!
  
       - "sha256" - Gives best protection (32 bytes), slowest, uses software implementation
            
@@ -184,7 +186,56 @@ Execute command:
 Response: 
 
     <3 bytes starting from the address 0x87654321>
+    
+<a name="cmd_update-act"></a>
+### [update-act](#cmd_update-act) : Updates active application from new application memory area
+Parameters:
+- [force] - Forces update even if not needed
+                "true" - Force the updateslowest
+                "true" - Don't force the update
 
+
+Execute command: 
+
+    > update-act force=true
+Response: 
+
+    No update needed for user application
+    Updating user application
+    OK
+    
+<a name="cmd_update-new"></a>
+### [update-new](#cmd_update-new) : Updates new application
+Parameters:
+
+ - count - Number of bytes to write, without checksum. Chunk size: 5120
+ 
+ - type - Type of application coding
+       
+      - "bin" - Binary format (.bin)
+                
+      - "hex" - Intel hex format (.hex)
+      
+      - "srec" - Motorola S-record format (.srec)
+ 
+ - [cksum] - Defines the checksum to use. If not present no checksum is assumed. WARNING: Even if checksum is wrong data will be written into flash memory!
+ 
+      - "sha256" - Gives best protection (32 bytes), slowest, uses software implementation
+           
+      - "crc32" - Medium protection (4 bytes), fast, uses hardware implementation. Settings in [Apendix A](#apend_a)
+
+      - "no" - No protection, fastest
+
+
+Execute command: 
+
+    > update-act force=true
+Response: 
+
+    No update needed for user application
+    Updating user application
+    OK
+    
 <a name="cmd_en-write-prot"></a>
 ####  [en-write-prot](#cmd_en-write-prot)—Enables write protection per sector, as selected with "mask"
 Parameters:
