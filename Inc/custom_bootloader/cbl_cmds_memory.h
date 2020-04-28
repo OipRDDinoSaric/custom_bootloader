@@ -22,7 +22,7 @@
 
 #define TXT_PAR_FLASH_WRITE_START "start"
 #define TXT_PAR_FLASH_WRITE_COUNT "count"
-#define TXT_PAR_FLASH_WRITE_CKSUM "cksum"
+
 
 #define TXT_PAR_FLASH_ERASE_TYPE "type"
 #define TXT_PAR_FLASH_ERASE_SECT "sector"

@@ -15,6 +15,7 @@ typedef enum
     CKSUM_NO
 } cksum_t;
 
+#define TXT_PAR_CKSUM "cksum"
 #define TXT_CKSUM_SHA256 "sha256"
 #define TXT_CKSUM_CRC "crc32"
 #define TXT_CKSUM_NO "no"

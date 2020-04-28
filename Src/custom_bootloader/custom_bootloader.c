@@ -1110,14 +1110,16 @@ static cbl_err_code_t cmd_help (parser_t * phPrsr)
             "Bootloader is on sectors 0, 1 and 2. Not needed with mass erase."
             CRLF "    " TXT_PAR_FLASH_ERASE_COUNT
             " - Number of sectors to erase. Not needed with mass erase." CRLF
-            CRLF "- " TXT_CMD_FLASH_WRITE " | Writes to flash, returns "
-            TXT_RESP_FLASH_WRITE_READY_HELP " when ready to receive bytes." CRLF
+            CRLF "- " TXT_CMD_FLASH_WRITE " | Writes to flash byte by byte. "
+            "Splits data into chunks" CRLF
             "     " TXT_PAR_FLASH_WRITE_START " - Starting address in hex "
             "format (e.g. 0x12345678), 0x can be omitted."CRLF
-            "     " TXT_PAR_FLASH_WRITE_COUNT " - Number of bytes to write. "
-            "Maximum bytes: " TXT_FLASH_WRITE_SZ CRLF
-            "     [" TXT_PAR_FLASH_WRITE_CKSUM "] - Checksum to use. If not"
+            "     " TXT_PAR_FLASH_WRITE_COUNT " - Number of bytes to write, "
+            "without checksum. Chunk size: " TXT_FLASH_WRITE_SZ CRLF
+            "     [" TXT_PAR_CKSUM "] - Checksum to use. If not"
             " present, no checksum is assumed" CRLF
+            "             WARNING: Even if checksum is wrong data "
+            "will be written into flash memory!" CRLF
             "                \"" TXT_CKSUM_SHA256 "\" - Best protection, "
             "slowest" CRLF
             "                \"" TXT_CKSUM_CRC "\" - Medium protection, fast,"
@@ -1142,6 +1144,45 @@ static cbl_err_code_t cmd_help (parser_t * phPrsr)
             " - Number of bytes to read."
             CRLF CRLF
 #endif /* CBL_CMDS_MEMORY_H */
+#ifdef CBL_CMDS_UPDATE_ACT_H
+            "- " TXT_CMD_UPDATE_ACT " | Updates active application from new "
+            "application memory area" CRLF
+            "     [" TXT_PAR_UP_ACT_FORCE "] - Forces update even if not "
+            "needed" CRLF
+            "                \"" TXT_PAR_UP_ACT_TRUE "\" - Force the update"
+            "slowest" CRLF
+            "                \"" TXT_PAR_UP_ACT_TRUE "\" - Don't force the "
+            "update" CRLF CRLF
+#endif /* CBL_CMDS_UPDATE_ACT_H */
+#ifdef CBL_CMDS_UPDATE_NEW_H
+            "- " TXT_CMD_UPDATE_NEW " | Updates new application" CRLF
+            "     " TXT_PAR_UP_NEW_COUNT " - Number of bytes to write, "
+            "without checksum." CRLF
+            "     " TXT_PAR_APP_TYPE " - Type of application coding" CRLF
+            "                \"" TXT_PAR_APP_TYPE_BIN "\" - Binary format "
+            "(.bin)" CRLF
+            "                \"" TXT_PAR_APP_TYPE_HEX "\" - Intel hex "
+            "format (.hex)" CRLF
+            "                \"" TXT_PAR_APP_TYPE_SREC "\" - Motorola S-record"
+            " format (.srec)" CRLF
+            "     [" TXT_PAR_CKSUM "] - Checksum to use. If not"
+            " present, no checksum is assumed" CRLF
+            "             WARNING: Even if checksum is wrong data "
+            "will be written into flash memory!" CRLF
+            "                \"" TXT_CKSUM_SHA256 "\" - Best protection, "
+            "slowest" CRLF
+            "                \"" TXT_CKSUM_CRC "\" - Medium protection, fast,"
+            " uses inbuilt CRC32 hardware." CRLF
+            "                   Note: Data length must be divisible by 4! " CRLF
+            "                   Settings:" CRLF
+            "                            Polynomial: 0x4C11DB7 (Ethernet)" CRLF
+            "                            Init value: 0xFFFFFFFF" CRLF
+            "                                XORout: true" CRLF
+            "                                 RefIn: true" CRLF
+            "                                RefOut: true" CRLF
+            "                \"" TXT_CKSUM_NO "\" - No protection, fastest"
+            CRLF CRLF
+#endif /* CBL_CMDS_UPDATE_NEW_H */
 #ifdef CBL_CMDS_TEMPLATE_H
             /* Add a description of newly added command */
             TXT_CMD_TEMPLATE

@@ -510,8 +510,8 @@ static cbl_err_code_t write_get_params (parser_t * ph_prsr, uint32_t * p_start,
     }
 
     /* Get checksum to be used */
-    charChecksum = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_CKSUM,
-            strlen(TXT_PAR_FLASH_WRITE_CKSUM));
+    charChecksum = parser_get_val(ph_prsr, TXT_PAR_CKSUM,
+            strlen(TXT_PAR_CKSUM));
     /* This is an optional parameter, if it is not present, don't throw error */
 
     /* Fill start */

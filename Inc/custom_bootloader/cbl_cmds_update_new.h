@@ -6,9 +6,10 @@
 #ifndef CBL_CMDS_UPDATE_NEW_H
 #define CBL_CMDS_UPDATE_NEW_H
 #include "cbl_common.h"
+#include "cbl_boot_record.h"
 
 #define TXT_CMD_UPDATE_NEW "update-new"
-/* Also takes count parameter from cbl_cmds_memory.h */
+#define TXT_PAR_UP_NEW_COUNT "count"
 /* Also takes checksum parameter from cbl_checksum.h */
 /* Also takes application type parameter from cbl_boot_record.h */
 

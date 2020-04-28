@@ -7,7 +7,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include "cbl_boot_record.h"
 #include "cbl_checksum.h"
 #include "cbl_cmds_memory.h"
 #include "cbl_cmds_update_new.h"
@@ -63,8 +62,8 @@ static cbl_err_code_t update_new_get_params (parser_t * ph_prsr,
     char *char_cksum = NULL;
     char *char_app_type = NULL;
 
-    char_len = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_COUNT,
-            strlen(TXT_PAR_FLASH_WRITE_COUNT));
+    char_len = parser_get_val(ph_prsr, TXT_PAR_UP_NEW_COUNT,
+            strlen(TXT_PAR_UP_NEW_COUNT));
 
     if (NULL == char_len)
     {
@@ -80,8 +79,8 @@ static cbl_err_code_t update_new_get_params (parser_t * ph_prsr,
         return CBL_ERR_NEW_APP_LEN;
     }
 
-    char_cksum = parser_get_val(ph_prsr, TXT_PAR_FLASH_WRITE_CKSUM,
-            strlen(TXT_PAR_FLASH_WRITE_CKSUM));
+    char_cksum = parser_get_val(ph_prsr, TXT_PAR_CKSUM,
+            strlen(TXT_PAR_CKSUM));
 
     eCode = enum_checksum(char_cksum, strlen(char_cksum), p_cksum);
     ERR_CHECK(eCode);
