@@ -26,6 +26,8 @@ cbl_err_code_t cmd_update_new (parser_t * phPrsr)
     eCode = update_new_get_params(phPrsr, &len, &cksum, &app_type);
     ERR_CHECK(eCode);
 
+    flash_erase_sector(BOOT_NEW_APP_START_SECTOR, BOOT_NEW_APP_MAX_SECTORS);
+
     eCode = flash_write(BOOT_NEW_APP_START, len, cksum);
     ERR_CHECK(eCode);
 

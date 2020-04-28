@@ -15,6 +15,8 @@ static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len);
 static cbl_err_code_t update_act_bin (uint32_t new_len);
 static cbl_err_code_t update_act_hex (uint32_t new_len);
 static cbl_err_code_t update_act_srec (uint32_t new_len);
+static cbl_err_code_t enum_param_force (char * char_force, uint32_t len,
+bool * p_force);
 /**
  * @brief Checks 'boot record' if update to user application is available.
  *        If it is available updates the user application.
@@ -32,16 +34,39 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
 
     if (p_boot_record->is_new_app_ready == false)
     {
+        char *char_force = NULL;
+        bool force = false;
+
         /* Notify that no update is required */
         const char *msg = "No update needed for user application\r\n";
         INFO("%s", msg);
-        send_to_host(msg, strlen(msg));
-        return CBL_ERR_OK;
+        eCode = send_to_host(msg, strlen(msg));
+        ERR_CHECK(eCode);
+
+        /* Check if force parameter is given */
+        char_force = parser_get_val(phPrsr, TXT_PAR_UP_ACT_FORCE,
+                strlen(TXT_PAR_UP_ACT_FORCE));
+        if (char_force != NULL)
+        {
+            /* Fill boolean force */
+            eCode = enum_param_force(char_force, strlen(char_force), &force);
+            ERR_CHECK(eCode);
+        }
+        if (force == false)
+        {
+            return CBL_ERR_OK;
+        }
+    }
+    else
+    {
+        /* Notify that update is available */
+        const char *msg = "Update for user application available\r\n";
+        INFO("%s", msg);
+        eCode = send_to_host(msg, strlen(msg));
+        ERR_CHECK(eCode);
     }
 
-    /* Notify that no update is required */
-    const char *msg = "Update for user application available\r\n"
-            "Updating user application\r\n";
+    const char *msg = "Updating user application\r\n";
     INFO("%s", msg);
     eCode = send_to_host(msg, strlen(msg));
     ERR_CHECK(eCode);
@@ -54,6 +79,9 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
         /* New application is too long to fit into flash */
         return CBL_ERR_NEW_APP_LEN;
     }
+
+    /* Erase user application sectors */
+    flash_erase_sector(BOOT_ACT_APP_START_SECTOR, BOOT_ACT_APP_MAX_SECTORS);
 
     /* Write bytes to active application location */
     eCode = update_act(p_boot_record->new_app.app_type, new_len);
@@ -77,9 +105,31 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     return eCode;
 }
 
+static cbl_err_code_t enum_param_force (char * char_force, uint32_t len,
+bool * p_force)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+
+    if (strlen(TXT_PAR_UP_ACT_TRUE) == len
+            && strncmp(char_force, TXT_PAR_UP_ACT_TRUE, len) == 0)
+    {
+        ( *p_force) = true;
+    }
+    else if (strlen(TXT_PAR_UP_ACT_FALSE) == len
+            && strncmp(char_force, TXT_PAR_UP_ACT_FALSE, len) == 0)
+    {
+        ( *p_force) = false;
+    }
+    else
+    {
+        eCode = CBL_ERR_PAR_FORCE;
+    }
+
+    return eCode;
+}
 static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len)
 {
-    cbl_err_code_t eCode;
+    cbl_err_code_t eCode = CBL_ERR_OK;
     switch (app_type)
     {
         case TYPE_BIN:

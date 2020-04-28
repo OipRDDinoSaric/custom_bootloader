@@ -54,7 +54,8 @@ typedef enum
     CBL_ERR_NEW_APP_LEN, /*!< New user application is too long */
     CBL_ERR_NOT_IMPL, /*!< Requested action is not implemented */
     CBL_ERR_APP_TYPE, /*!< Invalid app type requested */
-    CBL_ERR_NULL_PAR /*!< NULL parameter received by function */
+    CBL_ERR_NULL_PAR, /*!< NULL parameter received by function */
+    CBL_ERR_PAR_FORCE /*!< Value of parameter force is undefined */
 } cbl_err_code_t;
 
 void CBL_run_system (void);

@@ -981,6 +981,17 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         }
         break;
 
+        case CBL_ERR_PAR_FORCE:
+        {
+            const char msg[] = "\r\nERROR: Invalid force parameter\r\n";
+
+            WARNING("Invalid force parameter\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
         default:
         {
             ERROR("Unhandled error happened\r\n");
