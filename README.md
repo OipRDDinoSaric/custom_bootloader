@@ -159,18 +159,49 @@ Note:
 
 Execute command: 
 
-    > flash-write start=0x87654321 count=68 cksum=crc32  
-Response: 
-
-    ready
-
-Send bytes:
-
-    <64 data bytes + 4 bytes CRC calculation>
+    > flash-write start=0x87654321 count=64 cksum=crc32  
     
 Response: 
 
+    chunks:1
+
+    chunk:0|length:64|address:0x87654321
+
+    ready
+    
+Send bytes:
+
+    <64 bytes>
+    
+Response:
+
+    chunk OK
+
+    checksum|length:4
+
+    ready
+ 
+Send checksum:
+     
+     <4 bytes>
+     
+Response:
+ 
     OK
+    
+<a name="cmd_dis-write-prot"></a>
+####  [dis-write-prot](#cmd_dis-write-prot)—Disables write protection per sector, as selected with "mask"
+Parameters:
+
+- mask - Mask in hex form for sectors where LSB corresponds to sector 0
+
+Execute command: 
+
+    > dis-write-prot mask=0xFF0
+Response: 
+
+    OK
+
 
 <a name="cmd_mem-read"></a>
 ####  [mem-read](#cmd_mem-read)—Read bytes from memory
@@ -232,27 +263,12 @@ Execute command:
     > update-new count=4 type=bin cksum=sha256
 Response: 
 
-    No update needed for user application
-    Updating user application
-    OK
-    
-<a name="cmd_en-write-prot"></a>
-####  [en-write-prot](#cmd_en-write-prot)—Enables write protection per sector, as selected with "mask"
-Parameters:
-
-- mask - Mask in hex form for sectors where LSB corresponds to sector 0
-
-Execute command: 
-
-    > en-write-prot mask=0xFF0
-    
-Response: 
-
     chunks:1
 
     chunk:0|length:4|address:0x08080000
 
     ready
+    
 Send bytes:
 
     <4 bytes>
@@ -282,6 +298,21 @@ Parameters:
 Execute command: 
 
     > dis-write-prot mask=0xFF0
+Response: 
+
+    OK
+
+    
+<a name="cmd_en-write-prot"></a>
+####  [en-write-prot](#cmd_en-write-prot)—Enables write protection per sector, as selected with "mask"
+Parameters:
+
+- mask - Mask in hex form for sectors where LSB corresponds to sector 0
+
+Execute command: 
+
+    > en-write-prot mask=0xFF0
+    
 Response: 
 
     OK
