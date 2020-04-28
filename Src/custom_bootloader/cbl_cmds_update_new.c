@@ -79,8 +79,8 @@ static cbl_err_code_t update_new_get_params (parser_t * ph_prsr,
         return CBL_ERR_NEED_PARAM;
     }
 
-    /* Fill len, skips 0x if present */
-    eCode = str2ui32(char_len, strlen(char_len), p_len, 16u);
+    /* Fill len */
+    eCode = str2ui32(char_len, strlen(char_len), p_len, 10u);
     ERR_CHECK(eCode);
 
     if (( *p_len) > BOOT_NEW_APP_MAX_LEN)
