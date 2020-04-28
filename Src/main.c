@@ -99,6 +99,7 @@ int main (void)
     MX_USART2_UART_Init();
     /* USER CODE BEGIN 2 */
 
+    // Make sure all peripherals are initialized
     CBL_run_system();
 
     /* WARNING: This shall never be reached */

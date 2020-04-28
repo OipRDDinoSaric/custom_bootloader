@@ -17,6 +17,7 @@ static cbl_err_code_t update_act_hex (uint32_t new_len);
 static cbl_err_code_t update_act_srec (uint32_t new_len);
 static cbl_err_code_t enum_param_force (char * char_force, uint32_t len,
 bool * p_force);
+
 /**
  * @brief Checks 'boot record' if update to user application is available.
  *        If it is available updates the user application.
@@ -105,6 +106,13 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     return eCode;
 }
 
+/**
+ * @brief Converts text of force parameter to boolean
+ *
+ * @param char_force Text of force parameter value
+ * @param len        Length of char_force
+ * @param p_force    Pointer to force boolean
+ */
 static cbl_err_code_t enum_param_force (char * char_force, uint32_t len,
 bool * p_force)
 {
@@ -131,6 +139,13 @@ bool * p_force)
 
     return eCode;
 }
+
+/**
+ * @brief Updates the flash bytes according to app_type
+ *
+ * @param app_type Application type used in new application
+ * @param new_len  Length of new application
+ */
 static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
@@ -165,6 +180,11 @@ static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len)
     return eCode;
 }
 
+/**
+ * @brief Updates bytes of current application from binary new application
+ *
+ * @param new_len Length of new application
+ */
 static cbl_err_code_t update_act_bin (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
@@ -175,6 +195,11 @@ static cbl_err_code_t update_act_bin (uint32_t new_len)
     return eCode;
 }
 
+/**
+ * @brief Updates bytes of current application from intel hex new application
+ *
+ * @param new_len Length of new application
+ */
 static cbl_err_code_t update_act_hex (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
@@ -184,6 +209,12 @@ static cbl_err_code_t update_act_hex (uint32_t new_len)
     return eCode;
 }
 
+/**
+ * @brief Updates bytes of current application from motorola S-Record new
+ *        application
+ *
+ * @param new_len Length of new application
+ */
 static cbl_err_code_t update_act_srec (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;

@@ -14,6 +14,16 @@
 static cbl_err_code_t update_new_get_params (parser_t * ph_prsr,
         uint32_t * p_len, cksum_t * p_cksum, app_type_t * p_app_type);
 
+/**
+ * @brief Updates new application bytes and writes to boot_record. On success
+ *        restarts the processor
+ *        Parameters from phPrsr:
+ *          count - number of bytes to write
+ *          cksum - checksum used
+ *          type - application type (bin, hex...)
+ *
+ * @param phPrsr Pointer to handle of parser
+ */
 cbl_err_code_t cmd_update_new (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
