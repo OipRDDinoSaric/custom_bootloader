@@ -42,7 +42,16 @@ cbl_err_code_t cmd_update_new (parser_t * phPrsr)
     ERR_CHECK(eCode);
 
     eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+    ERR_CODE(eCode);
 
+    char restart_msg[] = "Restarting...\r\n";
+    INFO("%s", restart_msg);
+    eCode = send_to_host(restart_msg, strlen(restart_msg));
+    ERR_CODE(eCode);
+
+    NVIC_SystemReset();
+
+    /* NEVER REACHED */
     return eCode;
 }
 
@@ -79,8 +88,7 @@ static cbl_err_code_t update_new_get_params (parser_t * ph_prsr,
         return CBL_ERR_NEW_APP_LEN;
     }
 
-    char_cksum = parser_get_val(ph_prsr, TXT_PAR_CKSUM,
-            strlen(TXT_PAR_CKSUM));
+    char_cksum = parser_get_val(ph_prsr, TXT_PAR_CKSUM, strlen(TXT_PAR_CKSUM));
 
     eCode = enum_checksum(char_cksum, strlen(char_cksum), p_cksum);
     ERR_CHECK(eCode);
