@@ -38,6 +38,7 @@ On the other hand, if user doesn't need the debug output, build and flash the pr
 ### List
 * [version](#cmd_version) : Gets a version of the bootloader
 * [help](#cmd_help) : Makes life easier
+* [reset](#cmd_reset) : Resets the microcontroller
 * [cid](#cmd_cid) : Gets chip identification number
 * [get-rdp-level](#cmd_get-rdp-level) : Gets read protection Ref. man. p. 93
 * [jump-to](#cmd_jump-to) : Jumps to a requested address
@@ -78,6 +79,20 @@ Execute command:
 Response: 
 
     <List of all commands and examples>
+    
+<a name="cmd_reset"></a>
+#### [reset](#cmd_reset) : Resets the microcontroller
+Parameters:
+
+ - None
+
+Execute command: 
+
+    > reset
+    
+Response: 
+
+    OK
 
 <a name="cmd_cid"></a>
 ####  [cid](#cmd_cid)—Gets chip identification number
@@ -88,6 +103,7 @@ Parameters:
 Execute command: 
 
     > cid  
+    
 Response: 
 
     0x413
@@ -222,8 +238,10 @@ Response:
 #### [update-act](#cmd_update-act) : Updates active application from new application memory area
 Parameters:
 - [force] - Forces update even if not needed
-                "true" - Force the updateslowest
-                "true" - Don't force the update
+
+   - "true" - Force the update
+                
+   - "false" - Don't force the update
 
 
 Execute command: 
