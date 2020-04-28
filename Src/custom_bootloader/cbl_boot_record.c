@@ -34,6 +34,7 @@ boot_record_t * boot_record_get (void)
     else
     {
         boot_record_init( &boot_record_editable);
+        boot_record_set( &boot_record_editable);
     }
 
     return &boot_record_editable;

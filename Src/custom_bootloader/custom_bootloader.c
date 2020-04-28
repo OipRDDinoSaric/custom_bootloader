@@ -94,6 +94,9 @@ void CBL_run_system ()
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     INFO("Custom bootloader started\r\n");
+
+    CBL_process_cmd(TXT_CMD_UPDATE_ACT, strlen(TXT_CMD_UPDATE_ACT));
+
     if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
     {
         INFO("Blue button pressed...\r\n");
@@ -103,6 +106,7 @@ void CBL_run_system ()
         INFO("Blue button not pressed...\r\n");
         eCode = run_shell_system();
     }
+
     ASSERT(CBL_ERR_OK == eCode, "ErrCode=%d:Restart the application.\r\n",
             eCode);
     go_to_user_app();
@@ -1150,7 +1154,7 @@ static cbl_err_code_t cmd_help (parser_t * phPrsr)
             "     [" TXT_PAR_UP_ACT_FORCE "] - Forces update even if not "
             "needed" CRLF
             "                \"" TXT_PAR_UP_ACT_TRUE "\" - Force the "
-                    "update" CRLF
+            "update" CRLF
             "                \"" TXT_PAR_UP_ACT_FALSE "\" - Don't force the "
             "update" CRLF CRLF
 #endif /* CBL_CMDS_UPDATE_ACT_H */

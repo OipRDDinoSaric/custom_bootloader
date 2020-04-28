@@ -58,7 +58,8 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
 
         if (force == false)
         {
-            return CBL_ERR_OK;
+            eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+            return eCode;
         }
     }
     else
@@ -95,11 +96,6 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     p_boot_record->act_app.app_type = p_boot_record->new_app.app_type;
     p_boot_record->act_app.cksum_used = p_boot_record->new_app.cksum_used;
     p_boot_record->act_app.len = p_boot_record->new_app.len;
-
-    /* Update new application meta data */
-    p_boot_record->act_app.app_type = TYPE_UNDEF;
-    p_boot_record->act_app.cksum_used = CKSUM_UNDEF;
-    p_boot_record->act_app.len = 0;
 
     eCode = boot_record_set(p_boot_record);
     ERR_CHECK(eCode);
