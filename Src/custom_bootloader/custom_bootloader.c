@@ -1149,9 +1149,9 @@ static cbl_err_code_t cmd_help (parser_t * phPrsr)
             "application memory area" CRLF
             "     [" TXT_PAR_UP_ACT_FORCE "] - Forces update even if not "
             "needed" CRLF
-            "                \"" TXT_PAR_UP_ACT_TRUE "\" - Force the update"
-            "slowest" CRLF
-            "                \"" TXT_PAR_UP_ACT_TRUE "\" - Don't force the "
+            "                \"" TXT_PAR_UP_ACT_TRUE "\" - Force the "
+                    "update" CRLF
+            "                \"" TXT_PAR_UP_ACT_FALSE "\" - Don't force the "
             "update" CRLF CRLF
 #endif /* CBL_CMDS_UPDATE_ACT_H */
 #ifdef CBL_CMDS_UPDATE_NEW_H
