@@ -42,12 +42,12 @@ cbl_err_code_t cmd_update_new (parser_t * phPrsr)
     ERR_CHECK(eCode);
 
     eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
-    ERR_CODE(eCode);
+    ERR_CHECK(eCode);
 
     char restart_msg[] = "Restarting...\r\n";
     INFO("%s", restart_msg);
     eCode = send_to_host(restart_msg, strlen(restart_msg));
-    ERR_CODE(eCode);
+    ERR_CHECK(eCode);
 
     NVIC_SystemReset();
 
