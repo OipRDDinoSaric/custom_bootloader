@@ -219,7 +219,7 @@ Response:
     <3 bytes starting from the address 0x87654321>
     
 <a name="cmd_update-act"></a>
-### [update-act](#cmd_update-act) : Updates active application from new application memory area
+#### [update-act](#cmd_update-act) : Updates active application from new application memory area
 Parameters:
 - [force] - Forces update even if not needed
                 "true" - Force the updateslowest
@@ -236,7 +236,7 @@ Response:
     OK
     
 <a name="cmd_update-new"></a>
-### [update-new](#cmd_update-new) : Updates new application
+#### [update-new](#cmd_update-new) : Updates new application
 Parameters:
 
  - count - Number of bytes to write, without checksum. Chunk size: 5120
