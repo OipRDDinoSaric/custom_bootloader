@@ -20,8 +20,11 @@ bool * p_force);
 /**
  * @brief Checks 'boot record' if update to user application is available.
  *        If it is available updates the user application.
+ *        Parameters from phPrsr:
+ *          force - force update even if flag for update is not set
+ *                  valid values TXT_PAR_UP_ACT_TRUE and TXT_PAR_UP_ACT_FALSE
  *
- * @param phPrsr Not used
+ * @param phPrsr Pointer to handle of parser
  */
 cbl_err_code_t cmd_update_act (parser_t * phPrsr)
 {
@@ -52,6 +55,7 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
             eCode = enum_param_force(char_force, strlen(char_force), &force);
             ERR_CHECK(eCode);
         }
+
         if (force == false)
         {
             return CBL_ERR_OK;
@@ -110,7 +114,11 @@ bool * p_force)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
 
-    if (strlen(TXT_PAR_UP_ACT_TRUE) == len
+    if(char_force == NULL)
+    {
+        eCode = CBL_ERR_PAR_FORCE;
+    }
+    else if (strlen(TXT_PAR_UP_ACT_TRUE) == len
             && strncmp(char_force, TXT_PAR_UP_ACT_TRUE, len) == 0)
     {
         ( *p_force) = true;
