@@ -196,7 +196,7 @@ static cbl_err_code_t update_act_bin (uint32_t new_len)
 }
 
 /**
- * @brief Updates bytes of current application from intel hex new application
+ * @brief Updates bytes of current application from Intel hex new application
  *
  * @param new_len Length of new application
  */
@@ -210,7 +210,7 @@ static cbl_err_code_t update_act_hex (uint32_t new_len)
 }
 
 /**
- * @brief Updates bytes of current application from motorola S-Record new
+ * @brief Updates bytes of current application from Motorola S-Record new
  *        application
  *
  * @param new_len Length of new application
