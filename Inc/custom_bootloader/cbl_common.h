@@ -119,6 +119,8 @@ void ui2binstr (uint32_t num, char * str, uint8_t numofbits);
 uint32_t ui32_min (uint32_t num1, uint32_t num2);
 cbl_err_code_t two_hex_chars2ui8 (uint8_t high_half, uint8_t low_half,
         uint8_t * p_result);
+cbl_err_code_t four_hex_chars2ui16 (uint8_t * array, uint32_t len,
+        uint16_t * p_result);
 cbl_err_code_t eight_hex_chars2ui32 (uint8_t * array, uint32_t len,
         uint32_t * p_result);
 

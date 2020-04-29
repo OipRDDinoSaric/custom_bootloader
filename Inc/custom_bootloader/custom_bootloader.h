@@ -59,7 +59,9 @@ typedef enum
     CBL_ERR_INV_SREC, /*!< Invalid srec file format given */
     CBL_ERR_SREC_FCN, /*!< Invalid S-record function */
     CBL_ERR_INV_HEX, /*!< Invalid hex value character given to the function */
-    CBL_ERR_SEGMEN /*!< Tried accessing forbidden address */
+    CBL_ERR_SEGMEN, /*!< Tried accessing forbidden address */
+    CBL_ERR_IHEX_FCN, /*!< Invalid intel hex function requested */
+    CBL_ERR_INV_IHEX /*!< Invalid intel hex function */
 } cbl_err_code_t;
 
 void CBL_run_system (void);

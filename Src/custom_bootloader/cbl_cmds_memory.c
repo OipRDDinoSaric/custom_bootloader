@@ -265,7 +265,6 @@ cbl_err_code_t flash_erase_sector (uint32_t sect, uint32_t count)
     /* Check for errors */
     if (HALCode != HAL_OK)
     {
-        uint32_t err = HAL_FLASH_GetError();
         return CBL_ERR_HAL_ERASE;
     }
     if (sectorCode != 0xFFFFFFFFU) /*!< 0xFFFFFFFFU means success */

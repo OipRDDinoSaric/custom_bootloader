@@ -1041,6 +1041,29 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             eCode = CBL_ERR_OK;
         }
         break;
+
+        case CBL_ERR_IHEX_FCN:
+        {
+            const char msg[] = "\r\nERROR: Unsupported Intel hex function\r\n";
+
+            WARNING("Unsupported Intel hex function\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_INV_IHEX:
+        {
+            const char msg[] = "\r\nERROR: Invalid contents of intel hex\r\n";
+
+            WARNING("Invalid contents of intel hex\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
         default:
         {
             ERROR("Unhandled error happened\r\n");

@@ -365,6 +365,40 @@ cbl_err_code_t two_hex_chars2ui8 (uint8_t high_half, uint8_t low_half,
 }
 
 /**
+ * @brief Converts array of 4 BIG ENDIAN characters to uint16_t
+ *
+ * @param array[in]     Array containing BIG ENDIAN set of chars
+ * @param len[in]       Length of 'array'
+ * @param p_result[out] Number contained in array
+ *
+ * @return Error status
+ */
+cbl_err_code_t four_hex_chars2ui16 (uint8_t * array, uint32_t len,
+        uint16_t * p_result)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+
+    if (len != 4)
+    {
+        return CBL_ERR_INV_HEX;
+    }
+
+    *p_result = 0;
+
+    for (int iii = 0; iii < len; iii += 2)
+    {
+        uint8_t one_byte;
+
+        eCode = two_hex_chars2ui8(array[iii], array[iii + 1], &one_byte);
+        ERR_CHECK(eCode);
+
+        *p_result |= one_byte << (8 - (iii * 4));
+    }
+
+    return eCode;
+}
+
+/**
  * @brief Converts array of 8 BIG ENDIAN characters to uint32_t
  *
  * @param array[in]     Array containing BIG ENDIAN set of chars

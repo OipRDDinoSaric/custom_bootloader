@@ -13,7 +13,9 @@
 
 typedef struct
 {
-
+    bool is_EOF; /*!< Signal of end of file, set by function 01 */
+    uint16_t upper_address; /*!< Set by function 04 */
+    uint32_t * p_main; /*!< Set by function 05, BIG ENDIAN */
 } h_ihex_t;
 
 static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len);
@@ -22,6 +24,8 @@ static cbl_err_code_t update_act_hex (uint32_t new_len);
 static cbl_err_code_t update_act_srec (uint32_t new_len);
 static cbl_err_code_t enum_param_force (char * char_force, uint32_t len,
 bool * p_force);
+static cbl_err_code_t hex_handle_fcn (h_ihex_t * ph_ihex, uint8_t * p_fcn_start,
+        uint32_t len, uint32_t * p_fcn_len);
 static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
         uint32_t * p_fcn_len);
 
@@ -95,7 +99,7 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
 
     /* Erase user application sectors */
     eCode = flash_erase_sector(BOOT_ACT_APP_START_SECTOR,
-            BOOT_ACT_APP_MAX_SECTORS);
+    BOOT_ACT_APP_MAX_SECTORS);
     ERR_CHECK(eCode);
 
     /* Write bytes to active application location */
@@ -212,11 +216,28 @@ static cbl_err_code_t update_act_bin (uint32_t new_len)
 static cbl_err_code_t update_act_hex (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
+    h_ihex_t h_ihex;
+    uint8_t * p_app = (uint8_t *)BOOT_NEW_APP_START;
+    uint8_t * p_fcn_start = memchr(p_app, ':', new_len);
 
-    // TODO Find ':'
-    // Check can it be atleast
+    h_ihex.is_EOF = false;
+    h_ihex.p_main = 0; /* Unused! */
+    h_ihex.upper_address = 0;
 
+    while (p_fcn_start != NULL)
+    {
+        uint32_t fcn_len;
+        uint32_t fcn_offset;
 
+        fcn_offset = p_fcn_start - p_app;
+
+        eCode = hex_handle_fcn( &h_ihex, p_fcn_start, new_len - fcn_offset,
+                &fcn_len);
+        ERR_CHECK(eCode);
+
+        /* Get next function start */
+        p_fcn_start = memchr(p_fcn_start + fcn_len, ':', new_len);
+    }
     return eCode;
 }
 
@@ -249,6 +270,235 @@ static cbl_err_code_t update_act_srec (uint32_t new_len)
     return eCode;
 }
 
+static cbl_err_code_t hex_handle_fcn (h_ihex_t * ph_ihex, uint8_t * p_fcn_start,
+        uint32_t len, uint32_t * p_fcn_len)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    uint8_t fcn_code;
+    uint32_t offset = 1;
+    uint8_t byte_count; /* Number of byte PAIRS, not number of characters! */
+    uint64_t calc_checksum = 0;
+    uint8_t expected_checksum;
+    uint16_t fcn_address;
+
+    /* 11 is the minimal theoretical function length */
+    if (len < 11)
+    {
+        return CBL_ERR_INV_SREC;
+    }
+
+    /* Byte count is on index 1 and 2 */
+    eCode = two_hex_chars2ui8(p_fcn_start[offset], p_fcn_start[offset + 1],
+            &byte_count);
+    ERR_CHECK(eCode);
+
+    /* Accumulate checksum */
+    calc_checksum += byte_count;
+
+    /* 1 - ':', 2 - byte count, 4 - address, 2 - fcn code, 2*n -  data,
+     * 2 - checksum */
+    *p_fcn_len = 1 + 2 + 4 + 2 + byte_count * 2 + 2;
+
+    if ( *p_fcn_len > len)
+    {
+        return CBL_ERR_INV_IHEX;
+    }
+
+    /* Set offset for address */
+    offset = 3;
+
+    eCode = four_hex_chars2ui16( &p_fcn_start[offset], 4, &fcn_address);
+    ERR_CHECK(eCode);
+
+    /* Calculate checksum for address */
+    for (uint32_t iii = 0; iii < 4; iii += 2)
+    {
+        uint8_t one_byte;
+
+        eCode = two_hex_chars2ui8(p_fcn_start[offset + iii],
+                p_fcn_start[offset + iii + 1], &one_byte);
+        ERR_CHECK(eCode);
+
+        calc_checksum += one_byte;
+    }
+
+    /* Set to checksum */
+    offset = 9 + byte_count * 2;
+
+    /* Fill expected checksum */
+    eCode = two_hex_chars2ui8(p_fcn_start[offset], p_fcn_start[offset + 1],
+            &expected_checksum);
+    ERR_CHECK(eCode);
+
+    /* Set offset for function code */
+    offset = 7;
+
+    /* Fill function code */
+    eCode = two_hex_chars2ui8(p_fcn_start[offset], p_fcn_start[offset + 1],
+            &fcn_code);
+    ERR_CHECK(eCode);
+
+    /* Accumulate checksum for function code */
+    calc_checksum += fcn_code;
+
+    switch (fcn_code)
+    {
+        case 00:
+        {
+            /* Data function handler */
+
+            uint16_t lower_address;
+            uint32_t address;
+            uint8_t p_data[255]; /* 255 is maximum value for a byte */
+
+            lower_address = fcn_address;
+
+            address = (ph_ihex->upper_address << 16) | lower_address;
+
+            if (IS_ACT_APP_ADDRESS(address) == false)
+            {
+                return CBL_ERR_SEGMEN;
+            }
+
+            /* Move to the data start */
+            offset = 9;
+
+            /* Fill p_data */
+            for (uint32_t iii = 0; iii < (byte_count * 2); iii += 2)
+            {
+                /* Fill p_data */
+                eCode = two_hex_chars2ui8(p_fcn_start[offset + iii],
+                        p_fcn_start[offset + iii + 1], &p_data[iii / 2]);
+                ERR_CHECK(eCode);
+
+                /* Calculate checksum */
+                calc_checksum += p_data[iii / 2];
+            }
+
+            /* 2's complement */
+            calc_checksum = (((calc_checksum ^ 0xFF) & 0xFF) + 1) & 0xFF;
+
+            if (calc_checksum != expected_checksum)
+            {
+                return CBL_ERR_CKSUM_WRONG;
+            }
+
+            eCode = write_program_bytes(address, p_data, byte_count);
+            ERR_CHECK(eCode);
+        }
+        break;
+
+        case 01:
+        {
+            /* EOF function handler */
+
+            /* 2's complement */
+            calc_checksum = ((calc_checksum ^ 0xFF) & 0xFF) + 1;
+
+            if (expected_checksum != calc_checksum)
+            {
+                return CBL_ERR_CKSUM_WRONG;
+            }
+
+            ph_ihex->is_EOF = true;
+        }
+        break;
+
+        case 04:
+        {
+            /* Extended linear address handler */
+
+            uint16_t temp_upper_address;
+
+            if (byte_count != 2)
+            {
+                return CBL_ERR_INV_IHEX;
+            }
+
+            /* Put to data field*/
+            offset = 9;
+
+            eCode = four_hex_chars2ui16( &p_fcn_start[offset], 4,
+                    &temp_upper_address);
+            ERR_CHECK(eCode);
+
+            /* Calculate checksum for data field */
+            for (uint32_t iii = 0; iii < 4; iii += 2)
+            {
+                uint8_t one_byte;
+
+                eCode = two_hex_chars2ui8(p_fcn_start[offset + iii],
+                        p_fcn_start[offset + iii + 1], &one_byte);
+                ERR_CHECK(eCode);
+
+                calc_checksum += one_byte;
+            }
+
+            /* 2's complement */
+            calc_checksum = ((calc_checksum ^ 0xFF) & 0xFF) + 1;
+
+            if (expected_checksum != calc_checksum)
+            {
+                return CBL_ERR_CKSUM_WRONG;
+            }
+
+            ph_ihex->upper_address = temp_upper_address;
+        }
+        break;
+
+        case 05:
+        {
+            /* Start linear address handler */
+
+            uint32_t main_fcn;
+
+            if (byte_count != 4)
+            {
+                return CBL_ERR_INV_IHEX;
+            }
+
+            /* Put to data field */
+            offset = 9;
+
+            /* BIG ENDIAN */
+            eCode = eight_hex_chars2ui32( &p_fcn_start[offset], 8, &main_fcn);
+            ERR_CHECK(eCode);
+
+            /* Calculate checksum for data field */
+            for (uint32_t iii = 0; iii < 8; iii += 2)
+            {
+                uint8_t one_byte;
+
+                eCode = two_hex_chars2ui8(p_fcn_start[offset + iii],
+                        p_fcn_start[offset + iii + 1], &one_byte);
+                ERR_CHECK(eCode);
+
+                calc_checksum += one_byte;
+            }
+
+            /* 2's complement */
+            calc_checksum = ((calc_checksum ^ 0xFF) & 0xFF) + 1;
+
+            if (expected_checksum != calc_checksum)
+            {
+                return CBL_ERR_CKSUM_WRONG;
+            }
+
+            /* BIG ENDIAN */
+            ph_ihex->p_main = (uint32_t *)main_fcn;
+        }
+        break;
+
+        default:
+        {
+            return CBL_ERR_IHEX_FCN;
+        }
+        break;
+
+    }
+
+    return eCode;
+}
 
 /**
  * @brief Handles given S-record function and write to active application flash
@@ -308,7 +558,7 @@ static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
             uint32_t address;
             uint8_t data_len = byte_count * 2 - 8 - 2; /* - 8 for address,
              - 2 for checksum */
-            uint8_t p_data[2 * 255 - 8 - 2] = { 0 }; /* 255 is max value of
+            uint8_t p_data[255 - 4 - 1] = { 0 }; /* 255 is max value of
              one byte */
             uint8_t expected_checksum = 0;
             uint64_t calc_checksum = 0;
@@ -319,6 +569,7 @@ static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
             /* Calculate checksum */
             calc_checksum = byte_count;
 
+            /* Calculate checksum for address */
             for (uint32_t iii = 0; iii < 8; iii += 2)
             {
                 uint8_t one_byte;
@@ -357,7 +608,7 @@ static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
                     p_fcn_start[offset + 1], &expected_checksum);
             ERR_CHECK(eCode);
 
-            if (((calc_checksum & 0xFF) ^ 0xFF) != expected_checksum)
+            if (((calc_checksum ^ 0xFF) & 0xFF) != expected_checksum)
             {
                 return CBL_ERR_CKSUM_WRONG;
             }
@@ -401,4 +652,5 @@ static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
 
     return eCode;
 }
+
 /*** end of file ***/
