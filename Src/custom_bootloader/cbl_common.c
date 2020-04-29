@@ -296,14 +296,106 @@ void ui2binstr (uint32_t num, char * str, uint8_t numofbits)
     *str = '\0';
 }
 
+/**
+ * @brief Find smaller number
+ *
+ * @param num1
+ * @param num2
+ *
+ * @return Smaller number
+ */
 uint32_t ui32_min (uint32_t num1, uint32_t num2)
 {
-    if(num1 < num2)
+    if (num1 < num2)
     {
         return num1;
     }
     return num2;
 }
 
+/**
+ * @brief Converts two ASCII bytes containing two hex characters to a byte
+ *
+ * @param high_half[in] 0xVX Contains V hex value
+ * @param low_half[in]  0xXU Contains U hex value
+ * @param p_result[out] Resulting byte 0xVU
+ *
+ * @return CBL_ERR_OK if not error happened, else CBL_ERR_INV_HEX
+ */
+cbl_err_code_t two_hex_chars2ui8 (uint8_t high_half, uint8_t low_half,
+        uint8_t * p_result)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+
+    *p_result = 0x00;
+
+    high_half = toupper(high_half);
+    low_half = toupper(low_half);
+
+    if (high_half >= '0' && high_half <= '9')
+    {
+        *p_result = (high_half - '0');
+    }
+    else if (high_half >= 'A' && high_half <= 'F')
+    {
+        *p_result = (high_half - 'A') + 0x0A;
+    }
+    else
+    {
+        return CBL_ERR_INV_HEX;
+    }
+
+    /* Move value to high-order half byte */
+    *p_result = ( *p_result & 0x0F) << 4;
+
+    if (low_half >= '0' && low_half <= '9')
+    {
+        *p_result |= (low_half - '0') & 0x0f;
+    }
+    else if (low_half >= 'A' && low_half <= 'F')
+    {
+        *p_result |= ((low_half - 'A') + 0x0A) & 0x0F;
+    }
+    else
+    {
+        return CBL_ERR_INV_HEX;
+    }
+
+    return eCode;
+}
+
+/**
+ * @brief Converts array of 8 BIG ENDIAN characters to uint32_t
+ *
+ * @param array[in]     Array containing BIG ENDIAN set of chars
+ * @param len[in]       Length of 'array'
+ * @param p_result[out] Number contained in array
+ *
+ * @return Error status
+ */
+cbl_err_code_t eight_hex_chars2ui32 (uint8_t * array, uint32_t len,
+        uint32_t * p_result)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+
+    if (len != 8)
+    {
+        return CBL_ERR_INV_HEX;
+    }
+
+    *p_result = 0;
+
+    for (int iii = 0; iii < len; iii += 2)
+    {
+        uint8_t one_byte;
+
+        eCode = two_hex_chars2ui8(array[iii], array[iii + 1], &one_byte);
+        ERR_CHECK(eCode);
+
+        *p_result |= one_byte << (24 - (iii * 4));
+    }
+
+    return eCode;
+}
 /*** end of file ***/
 

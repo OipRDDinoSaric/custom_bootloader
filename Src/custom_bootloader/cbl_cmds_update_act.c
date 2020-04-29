@@ -11,12 +11,19 @@
 #include "cbl_cmds_memory.h"
 #include "cbl_cmds_update_act.h"
 
+typedef struct
+{
+
+} h_ihex_t;
+
 static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len);
 static cbl_err_code_t update_act_bin (uint32_t new_len);
 static cbl_err_code_t update_act_hex (uint32_t new_len);
 static cbl_err_code_t update_act_srec (uint32_t new_len);
 static cbl_err_code_t enum_param_force (char * char_force, uint32_t len,
 bool * p_force);
+static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
+        uint32_t * p_fcn_len);
 
 /**
  * @brief Checks 'boot record' if update to user application is available.
@@ -87,7 +94,9 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     }
 
     /* Erase user application sectors */
-    flash_erase_sector(BOOT_ACT_APP_START_SECTOR, BOOT_ACT_APP_MAX_SECTORS);
+    eCode = flash_erase_sector(BOOT_ACT_APP_START_SECTOR,
+            BOOT_ACT_APP_MAX_SECTORS);
+    ERR_CHECK(eCode);
 
     /* Write bytes to active application location */
     eCode = update_act(p_boot_record->new_app.app_type, new_len);
@@ -118,7 +127,7 @@ bool * p_force)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
 
-    if(char_force == NULL)
+    if (char_force == NULL)
     {
         eCode = CBL_ERR_PAR_FORCE;
     }
@@ -204,22 +213,191 @@ static cbl_err_code_t update_act_hex (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
 
-    return CBL_ERR_NOT_IMPL;
+    // TODO Find ':'
+    // Check can it be atleast
+
 
     return eCode;
 }
 
 /**
- * @brief Updates bytes of current application from Motorola S-Record new
- *        application
+ * @brief Updates bytes of current application from Motorola S-Record S37-style
+ *        new application. Writes to flash
  *
  * @param new_len Length of new application
  */
 static cbl_err_code_t update_act_srec (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
+    uint8_t * p_app = (uint8_t *)BOOT_NEW_APP_START;
+    uint8_t * p_fcn_start = memchr(p_app, 'S', new_len);
 
-    return CBL_ERR_NOT_IMPL;
+    while (p_fcn_start != NULL)
+    {
+        uint32_t fcn_len;
+        uint32_t fcn_offset;
+
+        fcn_offset = p_fcn_start - p_app;
+
+        eCode = srec_handle_fcn(p_fcn_start, new_len - fcn_offset, &fcn_len);
+        ERR_CHECK(eCode);
+
+        /* Get next function start */
+        p_fcn_start = memchr(p_fcn_start + fcn_len, 'S', new_len);
+    }
+
+    return eCode;
+}
+
+
+/**
+ * @brief Handles given S-record function and write to active application flash
+ *        if needed
+ *
+ * @note Flash sectors containing active application shall be erased before
+ *
+ * @param p_fcn_start[in] Pointer to function
+ * @param len[in]         Length of buffer containing function
+ * @param p_fcn_len[out]  Length of the actual function
+ *
+ * @return Error status
+ */
+static cbl_err_code_t srec_handle_fcn (uint8_t * p_fcn_start, uint32_t len,
+        uint32_t * p_fcn_len)
+{
+    cbl_err_code_t eCode = CBL_ERR_OK;
+    uint8_t fcn_num;
+    uint32_t offset = 2;
+    uint8_t byte_count; /* Number of byte PAIRS, not number of characters! */
+
+    /* 8 is the minimal theoretical function length */
+    if (len < 8)
+    {
+        return CBL_ERR_INV_SREC;
+    }
+
+    /* Byte count is on index 2 and 3, big endian format */
+    eCode = two_hex_chars2ui8(p_fcn_start[offset], p_fcn_start[offset + 1],
+            &byte_count);
+    ERR_CHECK(eCode);
+
+    *p_fcn_len = byte_count * 2 + 4; /* 4 = 'S', function type and byte count */
+
+    if (len < *p_fcn_len || byte_count < 3)
+    {
+        return CBL_ERR_INV_SREC;
+    }
+
+    fcn_num = p_fcn_start[1];
+
+    /* Move to starting index of Address */
+    offset += 2;
+
+    switch (fcn_num)
+    {
+        case '0':
+        {
+            /* Header: contains description of following bytes
+             * SW4STM32 usually writes file name */
+            /* Handle not needed */
+        }
+        break;
+
+        case '3':
+        {
+            uint32_t address;
+            uint8_t data_len = byte_count * 2 - 8 - 2; /* - 8 for address,
+             - 2 for checksum */
+            uint8_t p_data[2 * 255 - 8 - 2] = { 0 }; /* 255 is max value of
+             one byte */
+            uint8_t expected_checksum = 0;
+            uint64_t calc_checksum = 0;
+
+            eCode = eight_hex_chars2ui32( &p_fcn_start[offset], 8, &address);
+            ERR_CHECK(eCode);
+
+            /* Calculate checksum */
+            calc_checksum = byte_count;
+
+            for (uint32_t iii = 0; iii < 8; iii += 2)
+            {
+                uint8_t one_byte;
+
+                eCode = two_hex_chars2ui8(p_fcn_start[offset + iii],
+                        p_fcn_start[offset + iii + 1], &one_byte);
+                ERR_CHECK(eCode);
+
+                calc_checksum += one_byte;
+            }
+
+            /* Move offset to data */
+            offset += 8;
+
+            if (IS_ACT_APP_ADDRESS(address) == false)
+            {
+                return CBL_ERR_SEGMEN;
+            }
+
+            for (uint32_t iii = 0; iii < data_len; iii += 2)
+            {
+                /* Fill p_data */
+                eCode = two_hex_chars2ui8(p_fcn_start[offset + iii],
+                        p_fcn_start[offset + iii + 1], &p_data[iii / 2]);
+                ERR_CHECK(eCode);
+
+                /* Calculate checksum */
+                calc_checksum += p_data[iii / 2];
+            }
+
+            /* Move offset to checksum */
+            offset += data_len;
+
+            /* Fill checksum */
+            eCode = two_hex_chars2ui8(p_fcn_start[offset],
+                    p_fcn_start[offset + 1], &expected_checksum);
+            ERR_CHECK(eCode);
+
+            if (((calc_checksum & 0xFF) ^ 0xFF) != expected_checksum)
+            {
+                return CBL_ERR_CKSUM_WRONG;
+            }
+
+            eCode = write_program_bytes(address, p_data, data_len / 2);
+            ERR_CHECK(eCode);
+        }
+        break;
+
+        case '5':
+        {
+            /* Optional */
+            /* Contains number of 'S3' functions in a file */
+            /* Handle not needed */
+        }
+        break;
+
+        case '6':
+        {
+            /* Optional */
+            /* Contains number of 'S3' functions in a file */
+            /* Handle not needed */
+        }
+        break;
+
+        case '7':
+        {
+            /* File terminator */
+            /* Contains starting execution location */
+            /* Handle not needed for memory devices */
+        }
+        break;
+
+        default:
+        {
+            return CBL_ERR_SREC_FCN;
+        }
+        break;
+
+    }
 
     return eCode;
 }

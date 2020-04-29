@@ -95,8 +95,6 @@ void CBL_run_system ()
     cbl_err_code_t eCode = CBL_ERR_OK;
     INFO("Custom bootloader started\r\n");
 
-    CBL_process_cmd(TXT_CMD_UPDATE_ACT, strlen(TXT_CMD_UPDATE_ACT));
-
     if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
     {
         INFO("Blue button pressed...\r\n");
@@ -246,6 +244,10 @@ static cbl_err_code_t run_shell_system (void)
 
     shell_init();
 
+    /* Check if there is a update for user application */
+#if 1
+    eCode = CBL_process_cmd(TXT_CMD_UPDATE_ACT, strlen(TXT_CMD_UPDATE_ACT));
+#endif
     while (false == isExitNeeded)
     {
         switch (state)
@@ -996,6 +998,49 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         }
         break;
 
+        case CBL_ERR_INV_SREC:
+        {
+            const char msg[] = "\r\nERROR: Invalid S-record file\r\n";
+
+            WARNING("Invalid S-record file\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_SREC_FCN:
+        {
+            const char msg[] = "\r\nERROR: Invalid S-record function\r\n";
+
+            WARNING("Invalid S-record function\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_INV_HEX:
+        {
+            const char msg[] = "\r\nERROR: Invalid hex value character\r\n";
+
+            WARNING("Invalid hex value character\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
+
+        case CBL_ERR_SEGMEN:
+        {
+            const char msg[] = "\r\nERROR: Segmentation\r\n";
+
+            WARNING("Tried accessing forbidden address\r\n");
+
+            send_to_host(msg, strlen(msg));
+            eCode = CBL_ERR_OK;
+        }
+        break;
         default:
         {
             ERROR("Unhandled error happened\r\n");

@@ -19,11 +19,17 @@
 #define BOOT_ACT_APP_START_SECTOR 4
 #define BOOT_ACT_APP_MAX_SECTORS 4
 
+#define IS_ACT_APP_ADDRESS(ADDR) (((ADDR) >= (BOOT_ACT_APP_START)) && \
+        ((ADDR) <= ((BOOT_ACT_APP_START) + (BOOT_ACT_APP_MAX_LEN) - 1)))
+
 #define BOOT_NEW_APP_START 0x08080000UL
 #define BOOT_NEW_APP_MAX_LEN (448 * 1024) /* If it is bigger it can't fit into
                                            active app */
 #define BOOT_NEW_APP_START_SECTOR 8
 #define BOOT_NEW_APP_MAX_SECTORS 4
+
+#define IS_NEW_APP_ADDRESS(ADDR) (((ADDR) >= (BOOT_NEW_APP_START)) && \
+        ((ADDR) <= ((BOOT_NEW_APP_START) + (BOOT_NEW_APP_MAX_LEN) - 1)))
 
 #define TXT_PAR_APP_TYPE "type"
 #define TXT_PAR_APP_TYPE_BIN "bin"
@@ -53,7 +59,7 @@ typedef struct
     app_meta_t act_app; /*!< Active application meta data */
     app_meta_t new_app; /*!< New application meta data */
     uint32_t key; /*!< Used to check if boot_record was initialized.
-                       Boot record user shall ignore */
+     Boot record user shall ignore */
     uint8_t reserved[255];
 } boot_record_t;
 
