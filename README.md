@@ -81,7 +81,7 @@ Response:
     <List of all commands and examples>
     
 <a name="cmd_reset"></a>
-#### [reset](#cmd_reset) : Resets the microcontroller
+#### [reset](#cmd_reset)—Resets the microcontroller
 Parameters:
 
  - None
@@ -235,7 +235,7 @@ Response:
     <3 bytes starting from the address 0x87654321>
     
 <a name="cmd_update-act"></a>
-#### [update-act](#cmd_update-act) : Updates active application from new application memory area
+#### [update-act](#cmd_update-act)—Updates active application from new application memory area
 Parameters:
 - [force] - Forces update even if not needed
 
@@ -254,7 +254,7 @@ Response:
     OK
     
 <a name="cmd_update-new"></a>
-#### [update-new](#cmd_update-new) : Updates new application
+#### [update-new](#cmd_update-new)—Updates new application
 Parameters:
 
  - count - Number of bytes to write, without checksum. Chunk size: 5120
