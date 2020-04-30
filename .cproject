@@ -38,6 +38,9 @@
 								<option id="gnu.c.compiler.option.debugging.level.177661196" name="Debug Level" superClass="gnu.c.compiler.option.debugging.level" useByScannerDiscovery="false" value="gnu.c.debugging.level.max" valueType="enumerated"/>
 								<option id="gnu.c.compiler.option.include.paths.1129739177" name="Include paths (-I)" superClass="gnu.c.compiler.option.include.paths" useByScannerDiscovery="false" valueType="includePath">
 									<listOptionValue builtIn="false" value="../Inc"/>
+									<listOptionValue builtIn="false" value="../Inc/custom_bootloader/etc"/>
+									<listOptionValue builtIn="false" value="../Inc/custom_bootloader/system"/>
+									<listOptionValue builtIn="false" value="../Inc/custom_bootloader/commands"/>
 									<listOptionValue builtIn="false" value="../Inc/third_party"/>
 									<listOptionValue builtIn="false" value="../Inc/ST"/>
 									<listOptionValue builtIn="false" value="../Inc/custom_bootloader"/>
