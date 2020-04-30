@@ -215,7 +215,7 @@ static cbl_err_code_t update_act_bin (uint32_t new_len)
  */
 static cbl_err_code_t update_act_hex (uint32_t new_len)
 {
-    cbl_err_code_t eCode = CBL_ERR_OK;
+    cbl_err_code_t eCode = CBL_ERR_INV_IHEX;
     h_ihex_t h_ihex;
     uint8_t * p_app = (uint8_t *)BOOT_NEW_APP_START;
     uint8_t * p_fcn_start = memchr(p_app, ':', new_len);
@@ -234,6 +234,13 @@ static cbl_err_code_t update_act_hex (uint32_t new_len)
         eCode = hex_handle_fcn( &h_ihex, p_fcn_start, new_len - fcn_offset,
                 &fcn_len);
         ERR_CHECK(eCode);
+
+        /* Check if EOF record received */
+        if(true == h_ihex.is_EOF)
+        {
+            eCode = CBL_ERR_OK;
+            break;
+        }
 
         /* Get next function start */
         p_fcn_start = memchr(p_fcn_start + fcn_len, ':', new_len);
