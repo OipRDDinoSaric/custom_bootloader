@@ -261,9 +261,9 @@ static cbl_err_code_t run_shell_system (void)
     shell_init();
 
     /* Check if there is a update for user application */
-#if 1
-    eCode = CBL_process_cmd(TXT_CMD_UPDATE_ACT, strlen(TXT_CMD_UPDATE_ACT));
-#endif
+    char update_at[] = TXT_CMD_UPDATE_ACT;
+    eCode = CBL_process_cmd(update_at, strlen(update_at));
+
     while (false == isExitNeeded)
     {
         switch (state)

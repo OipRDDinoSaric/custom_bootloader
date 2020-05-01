@@ -38,11 +38,11 @@
       } while (0)
 #else /* #ifndef NDEBUG */
 
-#   define INFO(f_, ...);
-#   define DEBUG(f_, ...);
-#   define WARNING(f_, ...);
-#   define ERROR(f_, ...);
-#   define ASSERT(expr, f_, ...);
+#   define INFO(f_, ...)         ((void)0U)
+#   define DEBUG(f_, ...)        ((void)0U)
+#   define WARNING(f_, ...)      ((void)0U)
+#   define ERROR(f_, ...)        ((void)0U)
+#   define ASSERT(expr, f_, ...) ((void)0U)
 
 #endif /* #ifndef NDEBUG */
 

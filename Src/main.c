@@ -42,9 +42,9 @@ int main (void)
     initialise_monitor_handles();
 #endif
 
-    SystemClock_Config();
-
     CBL_hal_init();
+
+    SystemClock_Config();
 
     CBL_periph_init();
 
