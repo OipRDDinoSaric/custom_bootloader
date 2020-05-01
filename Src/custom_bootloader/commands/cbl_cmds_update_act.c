@@ -68,7 +68,7 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
         /* Notify that no update is required */
         const char *msg = "No update needed for user application\r\n";
         INFO("%s", msg);
-        eCode = send_to_host(msg, strlen(msg));
+        eCode = hal_send_to_host(msg, strlen(msg));
         ERR_CHECK(eCode);
 
         /* Check if force parameter is given */
@@ -83,7 +83,6 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
 
         if (force == false)
         {
-            eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
             return eCode;
         }
     }
@@ -92,13 +91,13 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
         /* Notify that update is available */
         const char *msg = "Update for user application available\r\n";
         INFO("%s", msg);
-        eCode = send_to_host(msg, strlen(msg));
+        eCode = hal_send_to_host(msg, strlen(msg));
         ERR_CHECK(eCode);
     }
 
     const char *msg = "Updating user application\r\n";
     INFO("%s", msg);
-    eCode = send_to_host(msg, strlen(msg));
+    eCode = hal_send_to_host(msg, strlen(msg));
     ERR_CHECK(eCode);
 
     /* Remove the flag signalizing update */
@@ -111,7 +110,7 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     }
 
     /* Erase user application sectors */
-    eCode = flash_erase_sector(BOOT_ACT_APP_START_SECTOR,
+    eCode = hal_flash_erase_sector(BOOT_ACT_APP_START_SECTOR,
     BOOT_ACT_APP_MAX_SECTORS);
     ERR_CHECK(eCode);
 
@@ -125,9 +124,6 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     p_boot_record->act_app.len = p_boot_record->new_app.len;
 
     eCode = boot_record_set(p_boot_record);
-    ERR_CHECK(eCode);
-
-    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
 
     return eCode;
 }
@@ -215,7 +211,7 @@ static cbl_err_code_t update_act_bin (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
 
-    eCode = write_program_bytes(BOOT_ACT_APP_START,
+    eCode = hal_write_program_bytes(BOOT_ACT_APP_START,
             (uint8_t *)BOOT_NEW_APP_START, new_len);
 
     return eCode;
@@ -450,7 +446,7 @@ static cbl_err_code_t hex_handle_fcn_00 (h_ihex_t * ph_ihex,
         return CBL_ERR_CKSUM_WRONG;
     }
 
-    eCode = write_program_bytes(address, p_data, byte_count);
+    eCode = hal_write_program_bytes(address, p_data, byte_count);
     ERR_CHECK(eCode);
 
     return eCode;
@@ -732,7 +728,7 @@ static cbl_err_code_t srec_handle_fcn_3 (uint8_t byte_count,
         return CBL_ERR_CKSUM_WRONG;
     }
 
-    eCode = write_program_bytes(address, p_data, data_len / 2);
+    eCode = hal_write_program_bytes(address, p_data, data_len / 2);
 
     return eCode;
 }

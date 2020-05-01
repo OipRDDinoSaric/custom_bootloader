@@ -9,9 +9,6 @@
 #include <stdlib.h>
 #include <ctype.h>
 #include <string.h>
-#include "crc.h"
-#include "dma.h"
-#include "usart.h"
 
 /** Used as a counter in the interrupt routine */
 volatile uint32_t gRxCmdCntr;
@@ -119,56 +116,6 @@ char *parser_get_val (parser_t * phPrsr, char * name, size_t lenName)
 }
 
 // \f - new page
-/**
- * @brief           Sends a message to the host over defined output
- *
- * @param buf[in]   Message to send
- *
- * @param len[in]   Length of buf
- */
-cbl_err_code_t send_to_host (const char * buf, size_t len)
-{
-    if (HAL_UART_Transmit(pUARTCmd, (uint8_t *)buf, len, HAL_MAX_DELAY)
-            == HAL_OK)
-    {
-        return CBL_ERR_OK;
-    }
-    else
-    {
-        return CBL_ERR_HAL_TX;
-    }
-}
-
-/**
- * @brief Nonblocking receive of 'len' characters from host.
- *        HAL_UART_RxCpltCallbackUART is triggered when done
- */
-cbl_err_code_t recv_from_host_start (uint8_t * buf, size_t len)
-{
-    if (HAL_UART_Receive_DMA(pUARTCmd, buf, len) == HAL_OK)
-    {
-        return CBL_ERR_OK;
-    }
-    else
-    {
-        return CBL_ERR_HAL_RX;
-    }
-}
-
-/**
- * @brief Stops waiting of the command
- */
-cbl_err_code_t recv_from_host_stop (void)
-{
-    if (HAL_UART_AbortReceive(pUARTCmd) == HAL_OK)
-    {
-        return CBL_ERR_OK;
-    }
-    else
-    {
-        return CBL_ERR_RX_ABORT;
-    }
-}
 
 /**
  * @brief           Converts string containing only number (e.g. 0A3F or 0x0A3F)
@@ -244,24 +191,6 @@ cbl_err_code_t verify_digits_only (const char * str, size_t len, uint8_t base)
 }
 
 // \f - new page
-/**
- * @brief   Verifies address is in jumpable region
- *
- * @note    Jumping to peripheral memory locations is NOT permitted
- */
-cbl_err_code_t verify_jump_address (uint32_t addr)
-{
-    cbl_err_code_t eCode = CBL_ERR_JUMP_INV_ADDR;
-
-    if (IS_FLASH_ADDRESS(addr) || IS_CCMDATARAM_ADDRESS(addr)
-    || IS_SRAM1_ADDRESS(addr) || IS_SRAM2_ADDRESS(addr)
-    || IS_BKPSRAM_ADDRESS(addr) || IS_SYSMEM_ADDRESS(addr))
-    {
-        eCode = CBL_ERR_OK;
-    }
-
-    return eCode;
-}
 
 /**
  * @brief               Convert uint32_t to binary string

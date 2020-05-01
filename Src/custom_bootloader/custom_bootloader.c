@@ -17,7 +17,6 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-#include "usart.h"
 /* Include what command types you want to support */
 #if true
 #include "cbl_cmds_memory.h"
@@ -85,6 +84,23 @@ static cbl_err_code_t cmd_help (parser_t * phPrsr);
 static cbl_err_code_t cmd_reset (parser_t * phPrsr);
 
 // \f - new page
+
+/**
+ * @brief Initializes HAL library
+ */
+void CBL_hal_init(void)
+{
+    hal_init();
+}
+
+/**
+ * @brief Initializes all configured peripherals
+ */
+void CBL_periph_init(void)
+{
+    hal_periph_init();
+}
+
 /**
  * @brief   Gives control to the bootloader system. Bootloader system waits for
  *          a command from the host and blocks the thread until exit is
@@ -95,7 +111,7 @@ void CBL_run_system ()
     cbl_err_code_t eCode = CBL_ERR_OK;
     INFO("Custom bootloader started\r\n");
 
-    if (HAL_GPIO_ReadPin(BTN_BLUE_GPIO_Port, BTN_BLUE_Pin) == GPIO_PIN_SET)
+    if (hal_blue_btn_state_get() == true)
     {
         INFO("Blue button pressed...\r\n");
     }
@@ -164,12 +180,12 @@ static void shell_init (void)
     "          If confused type \"help\"          " CRLF
     "*********************************************" CRLF;
 
-    send_to_host(bufWelcome, strlen(bufWelcome));
+    hal_send_to_host(bufWelcome, strlen(bufWelcome));
 
-    UNUSED( &recv_from_host_stop);
+    UNUSED( &hal_recv_from_host_stop);
 
     /* Bootloader started turn on red LED */
-    LED_ON(RED);
+    hal_led_on(LED_POWER_ON);
 }
 
 // \f - new page
@@ -204,7 +220,7 @@ static void go_to_user_app (void)
     char userAppHello[] = "Jumping to user application :)\r\n";
 
     /* Send hello message to user and debug output */
-    send_to_host(userAppHello, strlen(userAppHello));
+    hal_send_to_host(userAppHello, strlen(userAppHello));
     INFO("%s", userAppHello);
 
     addressRstHndl = *(volatile uint32_t *)(CBL_ADDR_USERAPP + 4u);
@@ -216,10 +232,10 @@ static void go_to_user_app (void)
     DEBUG("Reset handler address: %#x\r\n", (unsigned int ) addressRstHndl);
 
     /* Reconfigure the vector table location */
-    SCB->VTOR = CBL_ADDR_USERAPP;
+    hal_vtor_set(CBL_ADDR_USERAPP);
 
-    /* Function from CMSIS */
-    __set_MSP(msp_value);
+    /* Set the main stack pointer value */
+    hal_msp_set(msp_value);
 
     /* Give control to user application */
     pUserAppResetHandler();
@@ -294,7 +310,7 @@ static cbl_err_code_t run_shell_system (void)
                 char bye[] = "Exiting\r\n\r\n";
 
                 INFO(bye);
-                eCode = send_to_host(bye, strlen(bye));
+                eCode = hal_send_to_host(bye, strlen(bye));
                 ERR_CHECK(eCode);
 
                 isExitNeeded = true;
@@ -311,7 +327,7 @@ static cbl_err_code_t run_shell_system (void)
         state = nextState;
     }
     /* Botloader done, turn off red LED */
-    LED_OFF(RED);
+    hal_led_off(LED_POWER_ON);
 
     return eCode;
 }
@@ -326,14 +342,14 @@ static cbl_err_code_t sys_state_operation (void)
     cbl_err_code_t eCode = CBL_ERR_OK;
     char cmd[CMD_BUF_SZ] = { 0 };
 
-    LED_ON(GREEN);
+    hal_led_on(LED_READY);
     eCode = wait_for_cmd(cmd, CMD_BUF_SZ);
     ERR_CHECK(eCode);
-    LED_OFF(GREEN);
+    hal_led_off(LED_READY);
 
-    LED_ON(ORANGE);
+    hal_led_on(LED_BUSY);
     eCode = CBL_process_cmd(cmd, strlen(cmd));
-    LED_OFF(ORANGE);
+    hal_led_off(LED_BUSY);
     return eCode;
 }
 
@@ -355,14 +371,14 @@ static cbl_err_code_t wait_for_cmd (char * buf, size_t len)
     uint32_t iii = 0u;
     gRxCmdCntr = 0u;
 
-    eCode = send_to_host("\r\n> ", 4);
+    eCode = hal_send_to_host("\r\n> ", 4);
     ERR_CHECK(eCode);
 
     /* Read until CRLF or until full DMA */
     while (gRxCmdCntr < len)
     {
         /* Receive one char from host */
-        eCode = recv_from_host_start((uint8_t *)buf + iii, 1);
+        eCode = hal_recv_from_host_start((uint8_t *)buf + iii, 1);
         ERR_CHECK(eCode);
 
         while (iii != (gRxCmdCntr - 1))
@@ -575,13 +591,13 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
 
         case CMD_EN_WRITE_PROT:
         {
-            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_ENABLE);
+            eCode = cmd_change_write_prot(phPrsr, true);
         }
         break;
 
         case CMD_DIS_WRITE_PROT:
         {
-            eCode = cmd_change_write_prot(phPrsr, OB_WRPSTATE_DISABLE);
+            eCode = cmd_change_write_prot(phPrsr, false);
         }
         break;
 
@@ -661,6 +677,12 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         break;
     }
 
+    if (eCode == CBL_ERR_OK)
+    {
+        /* Send success response */
+        eCode = hal_send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+    }
+
     DEBUG("Responded\r\n");
     return eCode;
 }
@@ -676,9 +698,9 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
     DEBUG("Started\r\n");
 
     /* Turn off all LEDs except red */
-    LED_OFF(ORANGE);
-    LED_OFF(BLUE);
-    LED_OFF(GREEN);
+    hal_led_off(LED_MEMORY);
+    hal_led_off(LED_READY);
+    hal_led_off(LED_BUSY);
 
     switch (eCode)
     {
@@ -690,7 +712,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         {
             const char msg[] = "\r\nERROR: Command too long\r\n";
             WARNING("Overflow while reading happened\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -742,7 +764,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         {
             const char msg[] = "\r\nERROR: Invalid command\r\n";
             INFO("Client sent an invalid command\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -751,7 +773,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         {
             const char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
             INFO("Command is missing parameter(s)");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -763,7 +785,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     "BKPSRAM, SYSMEM and EXTMEM (if connected)\r\n";
 
             INFO("Invalid address inputed for jumping\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -774,7 +796,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     "\r\nERROR: Internal error while erasing sectors\r\n";
 
             WARNING("Error while erasing sectors\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -784,7 +806,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Wrong sector given\r\n";
 
             INFO("Wrong sector given\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -794,7 +816,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Wrong sector count given\r\n";
 
             INFO("Wrong sector count given\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -804,7 +826,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Invalid address range entered\r\n";
 
             INFO("Invalid address range entered for writing\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -814,7 +836,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Invalid length\r\n";
 
             INFO("User entered length 0 or too big\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -825,7 +847,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     " Retry last message.\r\n";
 
             INFO("Error while writing to flash on HAL level\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -835,7 +857,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Invalid erase type\r\n";
 
             INFO("User entered invalid erase type\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -845,7 +867,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: HAL error while erasing sectors \r\n";
 
             INFO("HAL error while erasing sector\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -855,7 +877,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Unlocking flash failed\r\n";
 
             WARNING("Unlocking flash with HAL failed\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -873,7 +895,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     "\r\nERROR: Number parameter contains letters\r\n";
 
             WARNING("User entered number parameter containing letters\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -886,7 +908,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("User entered number parameter with 'x', "
                     "but not '0' on index 0\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -897,7 +919,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     " (Invalid checksum). Retry last message.\r\n";
 
             WARNING("Data corrupted during transport, invalid checksum\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -907,7 +929,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Value for parameter invalid...\r\n";
 
             WARNING("User entered wrong param. value in template function\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -917,7 +939,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Requested checksum not supported\r\n";
 
             WARNING("User requested checksum not supported\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -928,7 +950,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     "divisible by 4 \r\n";
 
             WARNING("User entered invalid length for CRC32\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -938,7 +960,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Invalid length for sha256\r\n";
 
             WARNING("User entered invalid length for sha256\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -949,7 +971,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("New user application is too long"
                     "to for updating\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -960,7 +982,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
                     "\r\nERROR: Requested action is not implemented\r\n";
 
             WARNING("Requested action is not implemented\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -970,7 +992,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
             const char msg[] = "\r\nERROR: Invalid user application type\r\n";
 
             WARNING("Invalid user application type\r\n");
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -982,7 +1004,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("NULL sent as a parameter of a function\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -993,7 +1015,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Invalid force parameter\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1004,7 +1026,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Invalid S-record file\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1015,7 +1037,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Invalid S-record function\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1026,7 +1048,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Invalid hex value character\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1037,7 +1059,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Tried accessing forbidden address\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1048,7 +1070,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Unsupported Intel hex function\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1059,7 +1081,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
 
             WARNING("Invalid contents of intel hex\r\n");
 
-            send_to_host(msg, strlen(msg));
+            hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
         break;
@@ -1073,19 +1095,6 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
     }
 
     return eCode;
-}
-
-/**
- * @brief           Interrupt when receiveing is done from UART
- *
- * @param huart[in] Handle for UART that triggered the interrupt
- */
-void HAL_UART_RxCpltCallback (UART_HandleTypeDef * huart)
-{
-    if (huart == pUARTCmd)
-    {
-        gRxCmdCntr++;
-    }
 }
 
 // \f - new page
@@ -1107,7 +1116,7 @@ static cbl_err_code_t cmd_version (parser_t * phPrsr)
     strlcat(verbuf, CRLF, 12);
 
     /* Send response */
-    eCode = send_to_host(verbuf, strlen(verbuf));
+    eCode = hal_send_to_host(verbuf, strlen(verbuf));
 
     return eCode;
 }
@@ -1275,16 +1284,16 @@ static cbl_err_code_t cmd_help (parser_t * phPrsr)
             "********************************************************" CRLF;
     DEBUG("Started\r\n");
     /* Send response */
-    eCode = send_to_host(helpPrintout, strlen(helpPrintout));
+    eCode = hal_send_to_host(helpPrintout, strlen(helpPrintout));
 
     return eCode;
 }
 
 static cbl_err_code_t cmd_reset (parser_t * phPrsr)
 {
-    send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+    hal_send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
 
-    NVIC_SystemReset();
+    hal_system_restart();
 
     /* Never returns */
     return CBL_ERR_OK;

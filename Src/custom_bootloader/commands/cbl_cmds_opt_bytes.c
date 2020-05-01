@@ -17,40 +17,14 @@
 cbl_err_code_t cmd_get_rdp_lvl (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    FLASH_OBProgramInitTypeDef optBytes;
-    char buf[32] = "";
+    char rdp_lvl[32];
 
     DEBUG("Started\r\n");
 
-    HAL_FLASHEx_OBGetConfig( &optBytes);
-
-    /* Fill buffer with correct value of RDP */
-    switch (optBytes.RDPLevel)
-    {
-        case OB_RDP_LEVEL_0:
-        {
-            strcpy(buf, "level 0");
-        }
-        break;
-
-        case OB_RDP_LEVEL_2:
-        {
-            strcpy(buf, "level 2");
-        }
-        break;
-
-        default:
-        {
-            /* Any other value is RDP level 1 */
-            strcpy(buf, "level 1");
-        }
-        break;
-    }
-
-    strlcat(buf, CRLF, 32);
+    hal_rdp_lvl_get(rdp_lvl, sizeof(rdp_lvl));
 
     /* Send response */
-    eCode = send_to_host(buf, strlen(buf));
+    eCode = hal_send_to_host(rdp_lvl, strlen(rdp_lvl));
 
     return eCode;
 }
@@ -64,20 +38,13 @@ cbl_err_code_t cmd_get_rdp_lvl (parser_t * phPrsr)
  * @param EnDis Write protection state: OB_WRPSTATE_ENABLE or
  *              OB_WRPSTATE_DISABLE
  */
-cbl_err_code_t cmd_change_write_prot (parser_t * phPrsr, uint32_t EnDis)
+cbl_err_code_t cmd_change_write_prot (parser_t * phPrsr, bool EnDis)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
     char *charMask = NULL;
     uint32_t mask = 0u;
-    FLASH_OBProgramInitTypeDef pOBInit;
 
     DEBUG("Started\r\n");
-
-    /* Assert parameter */
-    if (EnDis != OB_WRPSTATE_ENABLE && EnDis != OB_WRPSTATE_DISABLE)
-    {
-        return CBL_ERR_INV_PARAM;
-    }
 
     /* Mask of sectors to affect */
     charMask = parser_get_val(phPrsr, TXT_PAR_EN_WRITE_PROT_MASK,
@@ -92,40 +59,7 @@ cbl_err_code_t cmd_change_write_prot (parser_t * phPrsr, uint32_t EnDis)
      hex */
     ERR_CHECK(eCode);
 
-    /* Put non nWRP bits to 0 */
-    mask &= (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
-
-    /* Unlock option byte configuration */
-    if (HAL_FLASH_OB_Unlock() != HAL_OK)
-    {
-        return CBL_ERR_HAL_UNLOCK;
-    }
-    /* Wait for past flash operations to be done */
-    FLASH_WaitForLastOperation(50000U); /*!< 50 s as in other function
-     references */
-
-    /* Get option bytes */
-    HAL_FLASHEx_OBGetConfig( &pOBInit);
-
-    /* Want to edit WRP */
-    pOBInit.OptionType = OPTIONBYTE_WRP;
-
-    pOBInit.WRPSector = mask;
-
-    /* Setup kind of change */
-    pOBInit.WRPState = EnDis;
-
-    /* Write new RWP state in the option bytes register */
-    HAL_FLASHEx_OBProgram( &pOBInit);
-
-    /* Process the change */
-    HAL_FLASH_OB_Launch();
-
-    /* Lock option byte configuration */
-    HAL_FLASH_OB_Lock();
-
-    /* Send response */
-    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+    eCode = hal_change_write_prot(mask, EnDis);
     return eCode;
 }
 
@@ -137,32 +71,16 @@ cbl_err_code_t cmd_change_write_prot (parser_t * phPrsr, uint32_t EnDis)
 cbl_err_code_t cmd_get_write_prot (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    FLASH_OBProgramInitTypeDef OBInit;
-    uint16_t invWRPSector;
-    char buf[FLASH_SECTOR_TOTAL + 3] = { 0 };
+    char write_prot[15] = {0};
 
     DEBUG("Started\r\n");
 
-    /* Unlock option byte configuration */
-    if (HAL_FLASH_OB_Unlock() != HAL_OK)
-    {
-        return CBL_ERR_HAL_UNLOCK;
-    }
-    /* Get option bytes */
-    HAL_FLASHEx_OBGetConfig( &OBInit);
-
-    /* Lock option byte configuration */
-    HAL_FLASH_OB_Lock();
-
-    /* Invert WRPSector as we want 1 to represent protected */
-    invWRPSector = (uint16_t) ~OBInit.WRPSector
-            & (FLASH_OPTCR_nWRP_Msk >> FLASH_OPTCR_nWRP_Pos);
-
-    /* Fill the buffer with binary data */
-    ui2binstr(invWRPSector, buf, FLASH_SECTOR_TOTAL);
+    eCode = hal_write_prot_get(write_prot, sizeof(write_prot));
+    ERR_CHECK(eCode);
 
     /* Send response */
-    eCode = send_to_host(buf, strlen(buf));
+    eCode = hal_send_to_host(write_prot, strlen(write_prot));
+
     return eCode;
 }
 /*** end of file ***/

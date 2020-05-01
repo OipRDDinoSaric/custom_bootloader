@@ -35,7 +35,7 @@ cbl_err_code_t cmd_update_new (parser_t * phPrsr)
     eCode = update_new_get_params(phPrsr, &len, &cksum, &app_type);
     ERR_CHECK(eCode);
 
-    eCode = flash_erase_sector(BOOT_NEW_APP_START_SECTOR,
+    eCode = hal_flash_erase_sector(BOOT_NEW_APP_START_SECTOR,
             BOOT_NEW_APP_MAX_SECTORS);
     ERR_CHECK(eCode);
 
@@ -53,15 +53,15 @@ cbl_err_code_t cmd_update_new (parser_t * phPrsr)
     eCode = boot_record_set(p_boot_record);
     ERR_CHECK(eCode);
 
-    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
+    eCode = hal_send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
     ERR_CHECK(eCode);
 
     char restart_msg[] = "Restarting...\r\n";
     INFO("%s", restart_msg);
-    eCode = send_to_host(restart_msg, strlen(restart_msg));
+    eCode = hal_send_to_host(restart_msg, strlen(restart_msg));
     ERR_CHECK(eCode);
 
-    NVIC_SystemReset();
+    hal_system_restart();
 
     /* NEVER REACHED */
     return eCode;

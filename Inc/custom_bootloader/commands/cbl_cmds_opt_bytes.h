@@ -13,7 +13,7 @@
 #define TXT_PAR_EN_WRITE_PROT_MASK "mask"
 
 cbl_err_code_t cmd_get_rdp_lvl (parser_t * phPrsr);
-cbl_err_code_t cmd_change_write_prot (parser_t * phPrsr, uint32_t EnDis);
+cbl_err_code_t cmd_change_write_prot (parser_t * phPrsr, bool EnDis);
 cbl_err_code_t cmd_get_write_prot (parser_t * phPrsr);
 
 #endif /* CBL_CMDS_OPT_BYTES_H */

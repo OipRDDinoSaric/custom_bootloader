@@ -36,10 +36,7 @@ cbl_err_code_t cmd_template (parser_t * phPrsr)
         return CBL_ERR_TEMP_NOT_VAL1;
     }
 
-
     /* Do function stuff */
-
-    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
 
     return eCode;
 }

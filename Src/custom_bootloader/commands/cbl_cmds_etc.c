@@ -15,12 +15,14 @@
 cbl_err_code_t cmd_cid (parser_t * phPrsr)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
-    char cid[14] = "0x", cidhelp[10];
+    char cid[14] = "0x";
+    char cidhelp[10];
+    uint32_t id_code = hal_id_code_get();
 
     DEBUG("Started\r\n");
 
     /* Convert hex value to text */
-    itoa((int)(DBGMCU->IDCODE & 0x00000FFF), cidhelp, 16);
+    utoa(id_code, cidhelp, 16);
 
     /* Add 0x to to beginning */
     strlcat(cid, cidhelp, 12);
@@ -29,7 +31,7 @@ cbl_err_code_t cmd_cid (parser_t * phPrsr)
     strlcat(cid, CRLF, 12);
 
     /* Send response */
-    eCode = send_to_host(cid, strlen(cid));
+    eCode = hal_send_to_host(cid, strlen(cid));
 
     return eCode;
 }
@@ -45,8 +47,6 @@ cbl_err_code_t cmd_exit (parser_t * phPrsr)
 
     gIsExitReq = true;
 
-    /* Send response */
-    eCode = send_to_host(TXT_SUCCESS, strlen(TXT_SUCCESS));
     return eCode;
 }
 

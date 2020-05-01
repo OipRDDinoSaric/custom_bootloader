@@ -10,13 +10,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <custom_bootloader.h>
-#include "main.h"
-
-/* Colors: RED, ORANGE, GREEN and BLUE */
-#define LED_ON(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,               \
-                                            LED_##COLOR##_Pin, GPIO_PIN_SET);
-#define LED_OFF(COLOR) HAL_GPIO_WritePin(LED_##COLOR##_GPIO_Port,              \
-                                            LED_##COLOR##_Pin, GPIO_PIN_RESET);
+#include "cbl_hal_stm32f407_disc1.h"
 
 #ifndef NDEBUG
 /**
@@ -54,28 +48,15 @@
 
 #define MAX_ARGS 8 /*!< Maximum number of arguments in an input cmd */
 
-#define TXT_SUCCESS "\r\nOK\r\n"
+#define TXT_SUCCESS      "\r\nOK\r\n"
 #define TXT_SUCCESS_HELP "\\r\\nOK\\r\\n" /*!< Used in help function */
 
-#define TXT_RESP_FLASH_WRITE_READY "\r\nready\r\n"
+#define TXT_RESP_FLASH_WRITE_READY      "\r\nready\r\n"
 #define TXT_RESP_FLASH_WRITE_READY_HELP "\\r\\nready\\r\\n" /*!< Used in help
                                                                     function */
+#define UNUSED(X) (void)X      /* To avoid gcc/g++ warnings */
 
 #define CRLF "\r\n"
-
-/* Missing address locations in stm32f407xx.h */
-#define SRAM1_END 0x2001BFFFUL
-#define SRAM2_END 0x2001FFFFUL
-#define BKPSRAM_END 0x40024FFFUL
-#define SYSMEM_BASE 0x2001FFFFUL
-#define SYSMEM_END  0x1FFF77FFUL
-
-#define IS_CCMDATARAM_ADDRESS(x) (((x) >= CCMDATARAM_BASE) &&               \
-                                                    ((x) <= CCMDATARAM_END))
-#define IS_SRAM1_ADDRESS(x) (((x) >= SRAM1_BASE) && ((x) <= SRAM1_END))
-#define IS_SRAM2_ADDRESS(x) (((x) >= SRAM2_BASE) && ((x) <= SRAM2_END))
-#define IS_BKPSRAM_ADDRESS(x) (((x) >= BKPSRAM_BASE) && ((x) <= BKPSRAM_END))
-#define IS_SYSMEM_ADDRESS(x) (((x) >= SYSMEM_BASE) && ((x) <= SYSMEM_END))
 
 #define ERR_CHECK(x)    do                          \
                         {                           \
@@ -86,8 +67,10 @@
                         }                           \
                         while(0)
 
+
 extern volatile uint32_t gRxCmdCntr;
 extern bool gIsExitReq;
+
 typedef enum
 {
     ARG_NAME = 0, //!< ARG_NAME
@@ -107,14 +90,9 @@ typedef struct
 cbl_err_code_t parser_run (char * cmd, size_t len, parser_t * phPrsr);
 char *parser_get_val (parser_t * phPrsr, char * name, size_t lenName);
 
-cbl_err_code_t send_to_host (const char * buf, size_t len);
-cbl_err_code_t recv_from_host_start (uint8_t * buf, size_t len);
-cbl_err_code_t recv_from_host_stop (void);
-
 cbl_err_code_t str2ui32 (const char * str, size_t len, uint32_t * num,
         uint8_t base);
 cbl_err_code_t verify_digits_only (const char * str, size_t i, uint8_t base);
-cbl_err_code_t verify_jump_address (uint32_t addr);
 void ui2binstr (uint32_t num, char * str, uint8_t numofbits);
 uint32_t ui32_min (uint32_t num1, uint32_t num2);
 cbl_err_code_t two_hex_chars2ui8 (uint8_t high_half, uint8_t low_half,

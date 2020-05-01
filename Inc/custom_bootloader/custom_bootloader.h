@@ -14,8 +14,6 @@
 
 #define CBL_VERSION "v1.1"
 
-#define pUARTCmd &huart2 /*!< UART used for shell communication */
-
 #define CBL_ADDR_USERAPP 0x08010000UL /*!< Address to MSP of user application */
 
 typedef enum
@@ -64,6 +62,8 @@ typedef enum
     CBL_ERR_INV_IHEX /*!< Invalid intel hex function */
 } cbl_err_code_t;
 
+void CBL_hal_init(void);
+void CBL_periph_init(void);
 void CBL_run_system (void);
 cbl_err_code_t CBL_process_cmd (char * cmd, size_t len);
 

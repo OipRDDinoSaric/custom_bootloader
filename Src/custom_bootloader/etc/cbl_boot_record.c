@@ -53,10 +53,10 @@ cbl_err_code_t boot_record_set (boot_record_t * p_new_boot_record)
 
     p_new_boot_record->key = 0x12345678;
 
-    eCode = flash_erase_sector(BOOT_RECORD_SECTOR, BOOT_RECORD_MAX_SECTORS);
+    eCode = hal_flash_erase_sector(BOOT_RECORD_SECTOR, BOOT_RECORD_MAX_SECTORS);
     ERR_CHECK(eCode);
 
-    eCode = write_program_bytes(BOOT_RECORD_START, p_new_byte, len);
+    eCode = hal_write_program_bytes(BOOT_RECORD_START, p_new_byte, len);
     return eCode;
 }
 
