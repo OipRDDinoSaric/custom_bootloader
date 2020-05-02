@@ -223,8 +223,11 @@
 						</toolChain>
 					</folderInfo>
 					<sourceEntries>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="Core"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Drivers"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="custom_bootloader"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="startup"/>
+						<entry flags="VALUE_WORKSPACE_PATH" kind="sourcePath" name="third_party"/>
 					</sourceEntries>
 				</configuration>
 			</storageModule>
@@ -233,12 +236,6 @@
 	</storageModule>
 	<storageModule moduleId="cdtBuildSystem" version="4.0.0">
 		<project id="F4Disc1_CustomBootloader.fr.ac6.managedbuild.target.gnu.cross.exe.771401843" name="Executable" projectType="fr.ac6.managedbuild.target.gnu.cross.exe"/>
-	</storageModule>
-	<storageModule moduleId="scannerConfiguration">
-		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
-		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1791652871;fr.ac6.managedbuild.config.gnu.cross.exe.debug.1791652871.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1949739566;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.1096941741">
-			<autodiscovery enabled="false" problemReportingEnabled="true" selectedProfileId=""/>
-		</scannerConfigBuildInfo>
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.core.LanguageSettingsProviders"/>
 	<storageModule moduleId="refreshScope" versionNumber="2">
@@ -249,4 +246,13 @@
 	</storageModule>
 	<storageModule moduleId="org.eclipse.cdt.make.core.buildtargets"/>
 	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
+	<storageModule moduleId="scannerConfiguration">
+		<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.release.1080754433;fr.ac6.managedbuild.config.gnu.cross.exe.release.1080754433.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1949739566;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.1096941741">
+			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+		<scannerConfigBuildInfo instanceId="fr.ac6.managedbuild.config.gnu.cross.exe.debug.1791652871;fr.ac6.managedbuild.config.gnu.cross.exe.debug.1791652871.;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.1949739566;fr.ac6.managedbuild.tool.gnu.cross.c.compiler.input.c.1096941741">
+			<autodiscovery enabled="false" problemReportingEnabled="true" selectedProfileId=""/>
+		</scannerConfigBuildInfo>
+	</storageModule>
 </cproject>
