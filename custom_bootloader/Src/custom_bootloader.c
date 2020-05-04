@@ -259,10 +259,11 @@ static cbl_err_code_t run_shell_system (void)
     INFO("Starting bootloader\r\n");
 
     shell_init();
-
+#ifdef CBL_CMDS_UPDATE_ACT_H
     /* Check if there is a update for user application */
     char update_at[] = TXT_CMD_UPDATE_ACT;
     eCode = CBL_process_cmd(update_at, strlen(update_at));
+#endif /* CBL_CMDS_UPDATE_ACT_H */
 
     while (false == isExitNeeded)
     {
