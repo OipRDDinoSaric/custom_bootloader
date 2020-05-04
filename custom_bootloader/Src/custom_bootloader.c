@@ -17,20 +17,20 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <string.h>
-/* Include what command types you want to support */
-#if true
+/* User application can only update new application */
+#if false
 #include "commands/cbl_cmds_memory.h"
 #endif
-#if true
+#if false
 #include "commands/cbl_cmds_opt_bytes.h"
 #endif
-#if true
+#if false
 #include "commands/cbl_cmds_etc.h"
 #endif
 #if true
 #include "commands/cbl_cmds_update_new.h"
 #endif
-#if true
+#if false
 #include "commands/cbl_cmds_update_act.h"
 #endif
 #if false
@@ -260,9 +260,11 @@ static cbl_err_code_t run_shell_system (void)
 
     shell_init();
 
+#ifdef CBL_CMDS_UPDATE_ACT_H
     /* Check if there is a update for user application */
     char update_at[] = TXT_CMD_UPDATE_ACT;
     eCode = CBL_process_cmd(update_at, strlen(update_at));
+#endif /* CBL_CMDS_UPDATE_ACT_H */
 
     while (false == isExitNeeded)
     {
