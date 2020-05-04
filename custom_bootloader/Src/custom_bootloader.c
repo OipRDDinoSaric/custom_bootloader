@@ -88,7 +88,7 @@ static cbl_err_code_t cmd_reset (parser_t * phPrsr);
 /**
  * @brief Initializes HAL library
  */
-void CBL_hal_init(void)
+void CBL_hal_init (void)
 {
     hal_init();
 }
@@ -96,7 +96,7 @@ void CBL_hal_init(void)
 /**
  * @brief Initializes all configured peripherals
  */
-void CBL_periph_init(void)
+void CBL_periph_init (void)
 {
     hal_periph_init();
 }
@@ -111,15 +111,7 @@ void CBL_run_system ()
     cbl_err_code_t eCode = CBL_ERR_OK;
     INFO("Custom bootloader started\r\n");
 
-    if (hal_blue_btn_state_get() == true)
-    {
-        INFO("Blue button pressed...\r\n");
-    }
-    else
-    {
-        INFO("Blue button not pressed...\r\n");
-        eCode = run_shell_system();
-    }
+    eCode = run_shell_system();
 
     ASSERT(CBL_ERR_OK == eCode, "ErrCode=%d:Restart the application.\r\n",
             eCode);
@@ -467,7 +459,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
 #ifdef CBL_CMDS_OPT_BYTES_H
     else if (len == strlen(TXT_CMD_GET_RDP_LVL)
             && strncmp(buf, TXT_CMD_GET_RDP_LVL, strlen(TXT_CMD_GET_RDP_LVL))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_GET_RDP_LVL;
     }
@@ -498,7 +490,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_ERASE)
             && strncmp(buf, TXT_CMD_FLASH_ERASE, strlen(TXT_CMD_FLASH_ERASE))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_FLASH_ERASE;
     }
@@ -510,7 +502,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
     }
     else if (len == strlen(TXT_CMD_FLASH_WRITE)
             && strncmp(buf, TXT_CMD_FLASH_WRITE, strlen(TXT_CMD_FLASH_WRITE))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_FLASH_WRITE;
     }
@@ -526,7 +518,7 @@ static cbl_err_code_t enum_cmd (char * buf, size_t len, cmd_t * pCmdCode)
 #ifdef CBL_CMDS_UPDATE_ACT_H
     else if (len == strlen(TXT_CMD_UPDATE_ACT)
             && strncmp(buf, TXT_CMD_UPDATE_ACT, strlen(TXT_CMD_UPDATE_ACT))
-                    == 0)
+            == 0)
     {
         *pCmdCode = CMD_UPDATE_ACT;
     }
@@ -585,54 +577,54 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         break;
 
 #ifdef CBL_CMDS_OPT_BYTES_H
-        case CMD_GET_RDP_LVL:
-        {
-            eCode = cmd_get_rdp_lvl(phPrsr);
-        }
-        break;
+            case CMD_GET_RDP_LVL:
+            {
+                eCode = cmd_get_rdp_lvl(phPrsr);
+            }
+            break;
 
-        case CMD_EN_WRITE_PROT:
-        {
-            eCode = cmd_change_write_prot(phPrsr, true);
-        }
-        break;
+            case CMD_EN_WRITE_PROT:
+            {
+                eCode = cmd_change_write_prot(phPrsr, true);
+            }
+            break;
 
-        case CMD_DIS_WRITE_PROT:
-        {
-            eCode = cmd_change_write_prot(phPrsr, false);
-        }
-        break;
+            case CMD_DIS_WRITE_PROT:
+            {
+                eCode = cmd_change_write_prot(phPrsr, false);
+            }
+            break;
 
-        case CMD_READ_SECT_PROT_STAT:
-        {
-            eCode = cmd_get_write_prot(phPrsr);
-        }
-        break;
+            case CMD_READ_SECT_PROT_STAT:
+            {
+                eCode = cmd_get_write_prot(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_OPT_BYTES_H */
 #ifdef CBL_CMDS_MEMORY_H
-        case CMD_JUMP_TO:
-        {
-            eCode = cmd_jump_to(phPrsr);
-        }
-        break;
+            case CMD_JUMP_TO:
+            {
+                eCode = cmd_jump_to(phPrsr);
+            }
+            break;
 
-        case CMD_FLASH_ERASE:
-        {
-            eCode = cmd_flash_erase(phPrsr);
-        }
-        break;
+            case CMD_FLASH_ERASE:
+            {
+                eCode = cmd_flash_erase(phPrsr);
+            }
+            break;
 
-        case CMD_MEM_READ:
-        {
-            eCode = cmd_mem_read(phPrsr);
-        }
-        break;
+            case CMD_MEM_READ:
+            {
+                eCode = cmd_mem_read(phPrsr);
+            }
+            break;
 
-        case CMD_FLASH_WRITE:
-        {
-            eCode = cmd_flash_write(phPrsr);
-        }
-        break;
+            case CMD_FLASH_WRITE:
+            {
+                eCode = cmd_flash_write(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_MEMORY_H */
 #ifdef CBL_CMDS_UPDATE_NEW_H
         case CMD_UPDATE_NEW:
@@ -642,24 +634,24 @@ static cbl_err_code_t handle_cmd (cmd_t cmdCode, parser_t * phPrsr)
         break;
 #endif /* CBL_CMDS_UPDATE_NEW_H */
 #ifdef CBL_CMDS_UPDATE_ACT_H
-        case CMD_UPDATE_ACT:
-        {
-            eCode = cmd_update_act(phPrsr);
-        }
-        break;
+            case CMD_UPDATE_ACT:
+            {
+                eCode = cmd_update_act(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_UPDATE_ACT_H */
 #ifdef CBL_CMDS_ETC_H
-        case CMD_CID:
-        {
-            eCode = cmd_cid(phPrsr);
-        }
-        break;
+            case CMD_CID:
+            {
+                eCode = cmd_cid(phPrsr);
+            }
+            break;
 
-        case CMD_EXIT:
-        {
-            eCode = cmd_exit(phPrsr);
-        }
-        break;
+            case CMD_EXIT:
+            {
+                eCode = cmd_exit(phPrsr);
+            }
+            break;
 #endif /* CBL_CMDS_ETC_H */
 #ifdef CBL_CMDS_TEMPLATE_H
             /* Add a new case for the enumerator and call function handler */
