@@ -103,12 +103,6 @@ cbl_err_code_t cmd_update_act (parser_t * phPrsr)
     /* Remove the flag signalizing update */
     p_boot_record->is_new_app_ready = false;
 
-    if (new_len > BOOT_ACT_APP_MAX_LEN)
-    {
-        /* New application is too long to fit into flash */
-        return CBL_ERR_NEW_APP_LEN;
-    }
-
     /* Erase user application sectors */
     eCode = hal_flash_erase_sector(BOOT_ACT_APP_START_SECTOR,
     BOOT_ACT_APP_MAX_SECTORS);
@@ -210,6 +204,12 @@ static cbl_err_code_t update_act (app_type_t app_type, uint32_t new_len)
 static cbl_err_code_t update_act_bin (uint32_t new_len)
 {
     cbl_err_code_t eCode = CBL_ERR_OK;
+
+    if (new_len > BOOT_ACT_APP_MAX_LEN)
+    {
+        /* New application is too long to fit into flash */
+        return CBL_ERR_NEW_APP_LEN;
+    }
 
     eCode = hal_write_program_bytes(BOOT_ACT_APP_START,
             (uint8_t *)BOOT_NEW_APP_START, new_len);
@@ -418,7 +418,8 @@ static cbl_err_code_t hex_handle_fcn_00 (h_ihex_t * ph_ihex,
 
     address = (ph_ihex->upper_address << 16) | lower_address;
 
-    if ( IS_ACT_APP_ADDRESS(address) == false)
+    if ( IS_ACT_APP_ADDRESS(address) == false
+            || IS_ACT_APP_ADDRESS(address + byte_count - 1) == false)
     {
         return CBL_ERR_SEGMEN;
     }
@@ -699,11 +700,6 @@ static cbl_err_code_t srec_handle_fcn_3 (uint8_t byte_count,
     /* Move offset to data */
     offset += 8;
 
-    if (IS_ACT_APP_ADDRESS(address) == false)
-    {
-        return CBL_ERR_SEGMEN;
-    }
-
     for (uint32_t iii = 0; iii < data_len; iii += 2)
     {
         /* Fill p_data */
@@ -726,6 +722,12 @@ static cbl_err_code_t srec_handle_fcn_3 (uint8_t byte_count,
     if (((calc_checksum ^ 0xFF) & 0xFF) != expected_checksum)
     {
         return CBL_ERR_CKSUM_WRONG;
+    }
+
+    if ( IS_ACT_APP_ADDRESS(address) == false
+            || IS_ACT_APP_ADDRESS(address + (data_len / 2) - 1) == false)
+    {
+        return CBL_ERR_SEGMEN;
     }
 
     eCode = hal_write_program_bytes(address, p_data, data_len / 2);

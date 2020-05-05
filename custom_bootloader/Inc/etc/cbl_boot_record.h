@@ -23,8 +23,7 @@
         ((ADDR) <= ((BOOT_ACT_APP_START) + (BOOT_ACT_APP_MAX_LEN) - 1)))
 
 #define BOOT_NEW_APP_START 0x08080000UL
-#define BOOT_NEW_APP_MAX_LEN (448 * 1024) /* If it is bigger it can't fit into
-                                           active app */
+#define BOOT_NEW_APP_MAX_LEN (512 * 1024)
 #define BOOT_NEW_APP_START_SECTOR 8
 #define BOOT_NEW_APP_MAX_SECTORS 4
 
