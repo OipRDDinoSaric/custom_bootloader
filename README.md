@@ -1,6 +1,6 @@
-# STM32F4 Discovery board custom bootloader with shell interface
+# Custom bootloader with shell interface
 
-This project is a bootloader for STM32F4 Disc1 board with STM32F407VG. It is also easily transferable to other STM32F4 platforms. 
+Bootloader easily transferable to Cortex platforms. Currently supported HAL layer is for STM32F4 Discovery board and STM32F407 MCu.
 
 Project is writen using "System workbench for STM32" based on Eclipse.
 
