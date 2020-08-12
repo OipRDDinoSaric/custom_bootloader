@@ -773,7 +773,7 @@ static cbl_err_code_t sys_state_error (cbl_err_code_t eCode)
         case CBL_ERR_NEED_PARAM:
         {
             const char msg[] = "\r\nERROR: Missing parameter(s)\r\n";
-            INFO("Command is missing parameter(s)");
+            INFO("Command is missing parameter(s)\r\n");
             hal_send_to_host(msg, strlen(msg));
             eCode = CBL_ERR_OK;
         }
