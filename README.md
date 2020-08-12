@@ -2,6 +2,8 @@
 
 Project is writen using "System workbench for STM32" based on Eclipse.
 
+Checkout README.md of other branches also.
+
 Branches:
 <pre>
 master:             Custom bootloader implementation without HAL.
@@ -13,45 +15,6 @@ user_app_stm32f407: Needed user application modifications to work with the bootl
 hal_stm32_f4disc1:  HAL layer for stm3232f407 discovery board.
 
 </pre>
-## Command interface 
-
-| Command     | interface     |
-|-------------|---------------|
-|  USART3 TX  |      PA2      |
-|  USART3 RX  |      PA3      |
-| Baud rate   | 115200 bits/s |
-| Word length | 8             |
-| Stop bit    | 1             |
-| Parity      | None          |
-
-## Debug interface 
-
-Debug interface is enabled with semihosting through ST-Link integrated on the board. 
-If user wants to enable debug output, he/she should build and flash the program with "CBL Debug.cfg". 
-On the other hand, if user doesn't need the debug output, build and flash the program with "CBL Release.cfg".
-
-**NOTE:** If program is flashed using "CBL Debug.cfg" and ST-Link losses connection with the "System workbench for STM32" STM32 application will not work. Because of that use "CBL Debug.cfg" only when debugging. 
-
-## STM32F4xx user application template (branch user_app)
-
-This template contains files that need to be configured in user application when using the bootloader. 
-
-Files were generated with STM32Cube-MX. Changes made:
-- system_stm32f4xx.c
-
-   - added #if 0 guard around vector table location, let bootloader deal with that
-   
-- STM32F407VGTx_FLASH.ld
-
-   - added memory section SEC3, representing sector 3
-   - SEC3 shall be used as persistent memory location 
-   - for application boot record
-   - and for communication between user application and bootloader
-
-## Boot record
-
-Used to store metadata about active application (application currently running) and new application (application to be updated to).
-Defined in custom_bootloader/Inc/etc/cbl_boot_record. Boot record is located in SEC3, always on location 0x0800C000, it is not initalized on system startup.
 
 ## Command reference
 
