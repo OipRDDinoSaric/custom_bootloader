@@ -4,6 +4,13 @@ Bootloader easily transferable to Cortex platforms. Currently supported HAL laye
 
 Project is writen using "System workbench for STM32" based on Eclipse.
 
+Branches:
+<pre>
+- master:             Custom bootloader implementation without HAL.
+- user_app_stm32f4:   Needed user application modifications to work with the bootloader.
+- hal_stm32_f4disc1:  HAL layer for stm3232f407 discovery board.
+- hal_ti_tms570lc43x: HAL layer for Texas instruments TMS570LC43x. 
+</pre>
 ## Command interface 
 
 | Command     | interface     |
