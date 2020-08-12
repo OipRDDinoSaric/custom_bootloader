@@ -27,7 +27,7 @@ On the other hand, if user doesn't need the debug output, build and flash the pr
 
 Used to store metadata about active application (application currently running) and new application (application to be updated to).
 Defined in custom_bootloader/Inc/etc/cbl_boot_record. Boot record is located in SEC3, always on location 0x0800C000, it is not initalized on system startup.
-
+---
 **NOTE:** When using CRC32 input data length must be divisible by 4! If your input is not divisible by 4 then append needed number of 0xFF on the end, before the checksum.
 
 |       CRC32       |       settings       |
