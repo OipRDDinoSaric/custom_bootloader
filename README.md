@@ -255,6 +255,9 @@ Response:
 
     <3 bytes starting from the address 0x87654321>
     
+Note:
+- Entering invalid read address crashes the program and reboot is required. 
+    
 <a name="cmd_update-act"></a>
 #### [update-act](#cmd_update-act)—Updates active application from new application memory area
 Parameters:
