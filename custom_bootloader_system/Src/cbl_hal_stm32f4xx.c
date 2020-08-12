@@ -2,7 +2,7 @@
  *
  * @brief HAL level function wrap for stm32f4xx
  */
-#include <system/cbl_hal_stm32f4xx.h>
+#include "cbl_hal_stm32f4xx.h"
 #include <crc.h>
 #include <dma.h>
 #include <gpio.h>

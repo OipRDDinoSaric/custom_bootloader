@@ -18,22 +18,22 @@
 #include <stdio.h>
 #include <string.h>
 /* Include what command types you want to support */
-#if true
+#if 1 == USE_CMDS_MEMORY
 #include "commands/cbl_cmds_memory.h"
 #endif
-#if true
+#if 1 == USE_CMDS_OPT_BYTES
 #include "commands/cbl_cmds_opt_bytes.h"
 #endif
-#if true
+#if 1 == USE_CMDS_ETC
 #include "commands/cbl_cmds_etc.h"
 #endif
-#if true
+#if 1 == USE_CMDS_UPDATE_NEW
 #include "commands/cbl_cmds_update_new.h"
 #endif
-#if true
+#if 1 == USE_CMDS_UPDATE_ACT
 #include "commands/cbl_cmds_update_act.h"
 #endif
-#if false
+#if 1 == USE_CMDS_TEMPLATE
 #include "commands/cbl_cmds_template.h"
 #endif
 

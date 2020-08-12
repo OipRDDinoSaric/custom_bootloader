@@ -9,8 +9,12 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <stdio.h>
+
 #include "custom_bootloader.h"
-#include "system/cbl_hal_stm32f407_disc1.h"
+
+#include "cbl_config.h"
+
+
 
 #ifndef NDEBUG
 /**

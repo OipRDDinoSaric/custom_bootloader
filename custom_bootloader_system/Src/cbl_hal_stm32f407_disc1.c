@@ -2,7 +2,7 @@
  *
  * @brief HAL level function wrap for stm32f407 disc1 development board
  */
-#include "system/cbl_hal_stm32f407_disc1.h"
+#include "cbl_hal_stm32f407_disc1.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
