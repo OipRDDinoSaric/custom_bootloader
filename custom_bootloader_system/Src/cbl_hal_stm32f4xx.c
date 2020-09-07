@@ -99,14 +99,15 @@ void hal_disable_interrupts(void)
     __disable_irq();
 
    // Disable IRQs
-   for(int i = 0;i < 8;i++)
+   for(int iii = 0;iii < 8;iii++)
    {
-       NVIC->ICER[i] = 0xFFFFFFFF;
+       NVIC->ICER[iii] = 0xFFFFFFFF;
    }
+
    // Clear pending IRQs
-   for(int i = 0;i < 8;i++)
+   for(int iii = 0;iii < 8;iii++)
    {
-       NVIC->ICPR[i] = 0xFFFFFFFF;
+       NVIC->ICPR[iii] = 0xFFFFFFFF;
    }
 }
 /**
