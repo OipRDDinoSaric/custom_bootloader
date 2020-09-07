@@ -22,6 +22,9 @@ typedef enum
 void hal_periph_init(void);
 void hal_init(void);
 void hal_system_restart(void);
+void hal_deinit(void);
+void hal_disable_interrupts(void);
+void hal_stop_systick(void);
 cbl_err_code_t hal_write_prot_get (char * write_prot, uint32_t len);
 void hal_rdp_lvl_get (char * rdp_lvl, uint32_t len);
 cbl_err_code_t hal_change_write_prot (uint32_t mask, bool EnDis);

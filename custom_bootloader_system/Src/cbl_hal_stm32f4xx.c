@@ -3,6 +3,7 @@
  * @brief HAL level function wrap for stm32f4xx
  */
 #include "cbl_hal_stm32f4xx.h"
+#include <stm32f4xx_hal.h>
 #include <crc.h>
 #include <dma.h>
 #include <gpio.h>
@@ -11,7 +12,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <usart.h>
-#include "stm32f4xx_hal.h"
 
 #define pUARTCmd &huart2 /*!< UART used for shell communication */
 
@@ -79,6 +79,36 @@ void hal_system_restart (void)
     /* Never returns */
 }
 
+void hal_deinit(void)
+{
+    HAL_RCC_DeInit();
+    HAL_DeInit();
+}
+
+void hal_stop_systick(void)
+{
+    // Stop sys tick
+    uint32_t temp = SysTick->CTRL;
+    temp &= ~0x02;
+    SysTick->CTRL = temp;
+}
+
+void hal_disable_interrupts(void)
+{
+    // stop all interrupts
+    __disable_irq();
+
+   // Disable IRQs
+   for(int i = 0;i < 8;i++)
+   {
+       NVIC->ICER[i] = 0xFFFFFFFF;
+   }
+   // Clear pending IRQs
+   for(int i = 0;i < 8;i++)
+   {
+       NVIC->ICPR[i] = 0xFFFFFFFF;
+   }
+}
 /**
  * @brief Fills the char array with write protection. LSB corresponds to
  *        sector 0
