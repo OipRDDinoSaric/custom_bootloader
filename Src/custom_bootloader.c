@@ -223,9 +223,13 @@ static void go_to_user_app (void)
     hal_send_to_host(userAppHello, strlen(userAppHello));
     INFO("%s", userAppHello);
 
+    hal_deinit();
+
     addressRstHndl = *(volatile uint32_t *)(CBL_ADDR_USERAPP + 4u);
 
     pUserAppResetHandler = (void *)addressRstHndl;
+
+    hal_disable_interrupts();
 
     /* WARNING: 32-bit assumed */
     DEBUG("MSP value: %#x\r\n", (unsigned int ) msp_value);
@@ -233,6 +237,8 @@ static void go_to_user_app (void)
 
     /* Reconfigure the vector table location */
     hal_vtor_set(CBL_ADDR_USERAPP);
+
+    hal_stop_systick();
 
     /* Set the main stack pointer value */
     hal_msp_set(msp_value);
